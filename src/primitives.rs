@@ -1,12 +1,9 @@
 use anyhow::{Result, ensure};
+use approx::abs_diff_eq;
 use std::{
     fmt::Display,
     ops::{Add, Div, Mul, Neg, Sub},
 };
-
-fn float_eq(a: f64, b: f64) -> bool {
-    (a - b).abs() < f64::EPSILON
-}
 
 #[derive(Debug, Clone, Copy)]
 pub struct Point {
@@ -23,7 +20,9 @@ impl Point {
 
 impl PartialEq for Point {
     fn eq(&self, other: &Self) -> bool {
-        float_eq(self.x, other.x) && float_eq(self.y, other.y) && float_eq(self.z, other.z)
+        abs_diff_eq!(self.x, other.x)
+            && abs_diff_eq!(self.y, other.y)
+            && abs_diff_eq!(self.z, other.z)
     }
 }
 
@@ -107,7 +106,9 @@ impl Vector {
 
 impl PartialEq for Vector {
     fn eq(&self, other: &Self) -> bool {
-        float_eq(self.x, other.x) && float_eq(self.y, other.y) && float_eq(self.z, other.z)
+        abs_diff_eq!(self.x, other.x)
+            && abs_diff_eq!(self.y, other.y)
+            && abs_diff_eq!(self.z, other.z)
     }
 }
 
@@ -205,13 +206,14 @@ impl Display for Vector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use approx::assert_abs_diff_eq;
 
     #[test]
     fn test_point_creation() {
         let p = Point::new(4.3, -4.2, 3.1);
-        assert_eq!(p.x, 4.3);
-        assert_eq!(p.y, -4.2);
-        assert_eq!(p.z, 3.1);
+        assert_abs_diff_eq!(p.x, 4.3);
+        assert_abs_diff_eq!(p.y, -4.2);
+        assert_abs_diff_eq!(p.z, 3.1);
     }
 
     #[test]
@@ -252,9 +254,9 @@ mod tests {
     #[test]
     fn test_vector_creation() {
         let v = Vector::new(4.3, -4.2, 3.1);
-        assert_eq!(v.x, 4.3);
-        assert_eq!(v.y, -4.2);
-        assert_eq!(v.z, 3.1);
+        assert_abs_diff_eq!(v.x, 4.3);
+        assert_abs_diff_eq!(v.y, -4.2);
+        assert_abs_diff_eq!(v.z, 3.1);
     }
 
     #[test]
@@ -312,11 +314,11 @@ mod tests {
         let v3 = Vector::new(0.0, 0.0, 1.0);
         let v4 = Vector::new(1.0, 2.0, 3.0);
         let v5 = Vector::new(-1.0, -2.0, -3.0);
-        assert_eq!(v1.magnitude(), 1.0);
-        assert_eq!(v2.magnitude(), 1.0);
-        assert_eq!(v3.magnitude(), 1.0);
-        assert_eq!(v4.magnitude(), (14.0f64).sqrt());
-        assert_eq!(v5.magnitude(), (14.0f64).sqrt());
+        assert_abs_diff_eq!(v1.magnitude(), 1.0);
+        assert_abs_diff_eq!(v2.magnitude(), 1.0);
+        assert_abs_diff_eq!(v3.magnitude(), 1.0);
+        assert_abs_diff_eq!(v4.magnitude(), (14.0f64).sqrt());
+        assert_abs_diff_eq!(v5.magnitude(), (14.0f64).sqrt());
     }
 
     #[test]
@@ -340,12 +342,12 @@ mod tests {
         let v1 = Vector::new(1.0, 2.0, 3.0);
         let v2 = Vector::new(4.0, -5.0, 6.0);
         let dot_product = v1.dot(&v2);
-        assert_eq!(dot_product, 12.0);
+        assert_abs_diff_eq!(dot_product, 12.0);
 
         let u1 = Vector::new(1.0, 0.0, 0.0);
         let u2 = Vector::new(-1.0, 0.0, 0.0);
         let dot_product2 = u1.dot(&u2);
-        assert_eq!(dot_product2, -1.0);
+        assert_abs_diff_eq!(dot_product2, -1.0);
     }
 
     #[test]
