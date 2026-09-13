@@ -1,7 +1,8 @@
+use merlin_rt::canvas::{Canvas, Color};
 use merlin_rt::primitives::{Point, Vector};
 
 use anyhow::Result;
-use std::io::Write;
+use std::path::Path;
 
 #[derive(Debug)]
 struct Projectile {
@@ -15,50 +16,49 @@ struct Environment {
     wind: Vector,
 }
 
-fn tick(env: &Environment, proj: &Projectile) -> Projectile {
+fn tick(env: &Environment, proj: &Projectile, canvas: &mut Canvas) -> Result<Projectile> {
+    let projectile_color = Color::new(0.0, 1.0, 0.0);
     let position = proj.position + proj.velocity;
     let velocity = proj.velocity + env.gravity + env.wind;
-    Projectile { position, velocity }
+    let x = position.x as usize;
+    let y = canvas.height.saturating_sub(position.y as usize);
+
+    if x < canvas.width && y < canvas.height {
+        canvas.write_pixel(x, y, projectile_color)?;
+    }
+
+    Ok(Projectile { position, velocity })
 }
 
 fn main() -> Result<()> {
-    let mut input = String::new();
-    print!("Enter the scale of the velocity vector: ");
-    std::io::stdout().flush().expect("Failed to flush stdout");
-    std::io::stdin()
-        .read_line(&mut input)
-        .expect("Failed to read line");
-
-    let scale: f64 = input
-        .trim()
-        .parse()
-        .expect("Please enter a valid floating point number");
+    let mut canvas = Canvas::new(900, 550);
     let p = Projectile {
         // Projectile starts one unit above the origin.
         position: Point::new(0.0, 1.0, 0.0),
         // Velocity is normalized to one unit per tick.
-        velocity: Vector::new(1.0, 1.0, 0.0) * scale,
+        velocity: Vector::new(1.0, 1.8, 0.0).normalize()? * 11.25,
     };
-    println!("Initial Position: {}", p.position);
-    println!("Initial Velocity (post normalization): {}", p.velocity);
-
     let e = Environment {
         gravity: Vector::new(0.0, -0.1, 0.0),
         wind: Vector::new(-0.01, 0.0, 0.0),
     };
+
+    println!("Initial Position: {}", p.position);
+    println!("Initial Velocity (post normalization): {}", p.velocity);
     println!("Gravity: {}", e.gravity);
     println!("Wind: {}", e.wind);
-
     println!("\nStarting simulation...");
 
     let mut projectile = p;
     let mut i = 0;
     while projectile.position.y > 0.0 {
         println!("Tick #{}: {}", i, projectile.position);
-        projectile = tick(&e, &projectile);
+        projectile = tick(&e, &projectile, &mut canvas)?;
         i += 1;
     }
     println!("It took {} ticks for the projectile to hit the ground.", i);
+
+    canvas.write_to_ppm(Path::new("projectile.ppm"))?;
 
     Ok(())
 }
