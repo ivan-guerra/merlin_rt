@@ -1,7 +1,7 @@
 use approx::abs_diff_eq;
 use std::{
     fmt::Display,
-    ops::{Add, Div, Mul, Neg, Sub},
+    ops::{Add, Div, Index, IndexMut, Mul, Neg, Sub},
 };
 use thiserror::Error;
 
@@ -9,6 +9,20 @@ use thiserror::Error;
 pub enum GeometryError {
     #[error("Cannot normalize a zero vector")]
     ZeroVectorNormalization,
+
+    #[error("Matrix dimensions do not match for multiplication")]
+    MatrixDimensionMismatch,
+
+    #[error(
+    "Matrix data has {actual} elements, but a {rows}x{cols} matrix \
+     requires {}",
+    rows * cols
+    )]
+    MatrixDataLengthMismatch {
+        rows: usize,
+        cols: usize,
+        actual: usize,
+    },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -211,6 +225,196 @@ impl Display for Vector {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Matrix {
+    pub rows: usize,
+    pub cols: usize,
+    data: Vec<f64>,
+}
+
+impl Matrix {
+    pub fn new(rows: usize, cols: usize) -> Self {
+        Matrix {
+            rows,
+            cols,
+            data: vec![0.0; rows * cols],
+        }
+    }
+
+    pub fn from_vec(rows: usize, cols: usize, data: Vec<f64>) -> Result<Self, GeometryError> {
+        if data.len() != rows * cols {
+            return Err(GeometryError::MatrixDataLengthMismatch {
+                rows,
+                cols,
+                actual: data.len(),
+            });
+        }
+
+        Ok(Matrix { rows, cols, data })
+    }
+
+    pub fn transpose(&self) -> Self {
+        let mut transposed = Matrix::new(self.cols, self.rows);
+        for i in 0..self.rows {
+            for j in 0..self.cols {
+                transposed[j][i] = self[i][j];
+            }
+        }
+        transposed
+    }
+
+    pub fn submatrix(&self, row: usize, col: usize) -> Result<Matrix, GeometryError> {
+        if row >= self.rows || col >= self.cols {
+            return Err(GeometryError::MatrixDimensionMismatch);
+        }
+
+        let mut submatrix = Matrix::new(self.rows - 1, self.cols - 1);
+        for i in 0..self.rows {
+            for j in 0..self.cols {
+                if i != row && j != col {
+                    let sub_i = if i < row { i } else { i - 1 };
+                    let sub_j = if j < col { j } else { j - 1 };
+                    submatrix[sub_i][sub_j] = self[i][j];
+                }
+            }
+        }
+        Ok(submatrix)
+    }
+
+    pub fn cofactor(&self, row: usize, col: usize) -> Result<f64, GeometryError> {
+        let submatrix = self.submatrix(row, col)?;
+        let sign = if (row + col).is_multiple_of(2) {
+            1.0
+        } else {
+            -1.0
+        };
+        Ok(sign * submatrix.determinant()?)
+    }
+
+    pub fn determinant(&self) -> Result<f64, GeometryError> {
+        if self.rows != self.cols {
+            return Err(GeometryError::MatrixDimensionMismatch);
+        }
+
+        if self.rows == 2 {
+            return Ok(self[0][0] * self[1][1] - self[0][1] * self[1][0]);
+        }
+
+        let mut det = 0.0;
+        for col in 0..self.cols {
+            det += self[0][col] * self.cofactor(0, col)?;
+        }
+        Ok(det)
+    }
+
+    pub fn is_invertible(&self) -> Result<bool, GeometryError> {
+        let det = self.determinant()?;
+        Ok(!abs_diff_eq!(det, 0.0))
+    }
+
+    pub fn inverse(&self) -> Result<Option<Matrix>, GeometryError> {
+        if !self.is_invertible()? {
+            return Ok(None);
+        }
+
+        let mut inverse = Matrix::new(self.rows, self.cols);
+        let det = self.determinant()?;
+        for row in 0..self.rows {
+            for col in 0..self.cols {
+                let cofactor = self.cofactor(row, col)?;
+                inverse[col][row] = cofactor / det;
+            }
+        }
+        Ok(Some(inverse))
+    }
+}
+
+impl PartialEq for Matrix {
+    fn eq(&self, other: &Self) -> bool {
+        if self.rows != other.rows || self.cols != other.cols {
+            return false;
+        }
+        self.data
+            .iter()
+            .zip(other.data.iter())
+            .all(|(a, b)| abs_diff_eq!(a, b))
+    }
+}
+
+impl Index<usize> for Matrix {
+    type Output = [f64];
+
+    fn index(&self, row: usize) -> &Self::Output {
+        let start = row * self.cols;
+        let end = start + self.cols;
+        &self.data[start..end]
+    }
+}
+
+impl IndexMut<usize> for Matrix {
+    fn index_mut(&mut self, row: usize) -> &mut Self::Output {
+        let start = row * self.cols;
+        let end = start + self.cols;
+        &mut self.data[start..end]
+    }
+}
+
+fn multiply_matrices(lhs: &Matrix, rhs: &Matrix) -> Result<Matrix, GeometryError> {
+    if lhs.cols != rhs.rows {
+        return Err(GeometryError::MatrixDimensionMismatch);
+    }
+
+    let mut result = Matrix::new(lhs.rows, rhs.cols);
+
+    for i in 0..lhs.rows {
+        for j in 0..rhs.cols {
+            let mut sum = 0.0;
+            for k in 0..lhs.cols {
+                sum += lhs[i][k] * rhs[k][j];
+            }
+            result[i][j] = sum;
+        }
+    }
+
+    Ok(result)
+}
+
+impl Mul<Matrix> for Matrix {
+    type Output = Result<Matrix, GeometryError>;
+
+    fn mul(self, rhs: Matrix) -> Self::Output {
+        multiply_matrices(&self, &rhs)
+    }
+}
+
+impl Mul<&Matrix> for &Matrix {
+    type Output = Result<Matrix, GeometryError>;
+
+    fn mul(self, rhs: &Matrix) -> Self::Output {
+        multiply_matrices(self, rhs)
+    }
+}
+
+impl From<Point> for Matrix {
+    fn from(point: Point) -> Self {
+        Matrix {
+            rows: 4,
+            cols: 1,
+            data: vec![point.x, point.y, point.z, 1.0],
+        }
+    }
+}
+
+impl From<Vector> for Matrix {
+    fn from(vector: Vector) -> Self {
+        Matrix {
+            rows: 4,
+            cols: 1,
+            data: vec![vector.x, vector.y, vector.z, 0.0],
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -364,5 +568,349 @@ mod tests {
         let v2 = Vector::new(4.0, 5.0, 6.0);
         let cross_product = v1.cross(&v2);
         assert_eq!(cross_product, Vector::new(-3.0, 6.0, -3.0));
+    }
+
+    #[test]
+    fn test_matrix_creation() {
+        let m1 = Matrix::new(2, 2);
+        for i in 0..2 {
+            for j in 0..2 {
+                assert_abs_diff_eq!(m1[i][j], 0.0);
+            }
+        }
+
+        let m2 = Matrix::from_vec(
+            4,
+            4,
+            vec![
+                1.0, 2.0, 3.0, 4.0, 5.5, 6.5, 7.5, 8.5, 9.0, 10.0, 11.0, 12.0, 13.5, 14.5, 15.5,
+                16.5,
+            ],
+        )
+        .expect("matrix dimensions should match data length");
+        let expected = Matrix::from_vec(
+            4,
+            4,
+            vec![
+                1.0, 2.0, 3.0, 4.0, 5.5, 6.5, 7.5, 8.5, 9.0, 10.0, 11.0, 12.0, 13.5, 14.5, 15.5,
+                16.5,
+            ],
+        )
+        .expect("matrix dimensions should match data length");
+        assert_eq!(m2, expected);
+    }
+
+    #[test]
+    fn test_matrix_indexing() {
+        let m = Matrix::from_vec(2, 2, vec![1.0, 2.0, 3.0, 4.0])
+            .expect("matrix dimensions should match data length");
+        assert_abs_diff_eq!(m[0][0], 1.0);
+        assert_abs_diff_eq!(m[0][1], 2.0);
+        assert_abs_diff_eq!(m[1][0], 3.0);
+        assert_abs_diff_eq!(m[1][1], 4.0);
+    }
+
+    #[test]
+    fn test_matrix_indexing_out_of_bounds() {
+        let m = Matrix::new(2, 2);
+        let result = std::panic::catch_unwind(|| {
+            let _ = m[2][0];
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_matrix_equality() {
+        let m1 = Matrix::from_vec(
+            4,
+            4,
+            vec![
+                1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0,
+            ],
+        )
+        .expect("matrix dimensions should match data length");
+        let m2 = Matrix::from_vec(
+            4,
+            4,
+            vec![
+                1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0,
+            ],
+        )
+        .expect("matrix dimensions should match data length");
+        assert_eq!(m1, m2);
+
+        let m3 = Matrix::from_vec(
+            4,
+            4,
+            vec![
+                1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.1,
+            ],
+        )
+        .expect("matrix dimensions should match data length");
+        assert_ne!(m1, m3);
+    }
+
+    #[test]
+    fn test_matrix_multiplication() {
+        let m1 = Matrix::from_vec(2, 3, vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+            .expect("matrix dimensions should match data length");
+        let m2 = Matrix::from_vec(3, 2, vec![7.0, 8.0, 9.0, 10.0, 11.0, 12.0])
+            .expect("matrix dimensions should match data length");
+        let result = (m1 * m2).expect("matrix multiplication should succeed");
+        let expected = Matrix::from_vec(2, 2, vec![58.0, 64.0, 139.0, 154.0])
+            .expect("matrix dimensions should match data length");
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_matrix_multiplication_dimension_mismatch() {
+        let m1 = Matrix::new(2, 3);
+        let m2 = Matrix::new(4, 2);
+        let result = m1 * m2;
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_matrix_multiplication_with_identity() {
+        let m = Matrix::from_vec(3, 3, vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])
+            .expect("matrix dimensions should match data length");
+        let identity = Matrix::from_vec(3, 3, vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+            .expect("matrix dimensions should match data length");
+        let result = (&m * &identity).expect("matrix multiplication should succeed");
+        assert_eq!(result, m);
+    }
+
+    #[test]
+    fn test_matrix_from_point() {
+        let p = Point::new(1.0, 2.0, 3.0);
+        let m: Matrix = p.into();
+        let expected = Matrix::from_vec(4, 1, vec![1.0, 2.0, 3.0, 1.0])
+            .expect("matrix dimensions should match data length");
+        assert_eq!(m.rows, 4);
+        assert_eq!(m.cols, 1);
+        assert_eq!(m, expected);
+    }
+
+    #[test]
+    fn test_matrix_from_vector() {
+        let v = Vector::new(1.0, 2.0, 3.0);
+        let m: Matrix = v.into();
+        let expected = Matrix::from_vec(4, 1, vec![1.0, 2.0, 3.0, 0.0])
+            .expect("matrix dimensions should match data length");
+        assert_eq!(m.rows, 4);
+        assert_eq!(m.cols, 1);
+        assert_eq!(m, expected);
+    }
+
+    #[test]
+    fn test_matrix_transpose() {
+        let m = Matrix::from_vec(2, 3, vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+            .expect("matrix dimensions should match data length");
+        let transposed = m.transpose();
+        let expected = Matrix::from_vec(3, 2, vec![1.0, 4.0, 2.0, 5.0, 3.0, 6.0])
+            .expect("matrix dimensions should match data length");
+        assert_eq!(transposed.rows, 3);
+        assert_eq!(transposed.cols, 2);
+        assert_eq!(transposed, expected);
+    }
+
+    #[test]
+    fn test_identity_matrix_transpose() {
+        let identity = Matrix::from_vec(3, 3, vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+            .expect("matrix dimensions should match data length");
+        let transposed = identity.transpose();
+        assert_eq!(transposed, identity);
+    }
+
+    #[test]
+    fn test_matrix_submatrix() {
+        let m = Matrix::from_vec(3, 3, vec![1.0, 5.0, 0.0, -3.0, 2.0, 7.0, 0.0, 6.0, -3.0])
+            .expect("matrix dimensions should match data length");
+        let submatrix = m
+            .submatrix(0, 2)
+            .expect("submatrix extraction should succeed");
+        let expected = Matrix::from_vec(2, 2, vec![-3.0, 2.0, 0.0, 6.0])
+            .expect("matrix dimensions should match data length");
+        assert_eq!(submatrix.rows, 2);
+        assert_eq!(submatrix.cols, 2);
+        assert_eq!(submatrix, expected);
+
+        let m = Matrix::from_vec(
+            4,
+            4,
+            vec![
+                -6.0, 1.0, 1.0, 6.0, -8.0, 5.0, 8.0, 6.0, -1.0, 0.0, 8.0, 2.0, -7.0, 1.0, -1.0, 1.0,
+            ],
+        )
+        .expect("matrix dimensions should match data length");
+        let submatrix = m
+            .submatrix(2, 1)
+            .expect("submatrix extraction should succeed");
+        let expected =
+            Matrix::from_vec(3, 3, vec![-6.0, 1.0, 6.0, -8.0, 8.0, 6.0, -7.0, -1.0, 1.0])
+                .expect("matrix dimensions should match data length");
+        assert_eq!(submatrix.rows, 3);
+        assert_eq!(submatrix.cols, 3);
+        assert_eq!(submatrix, expected);
+    }
+
+    #[test]
+    fn test_matrix_submatrix_out_of_bounds() {
+        let m = Matrix::new(2, 2);
+        let result = m.submatrix(2, 0);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_matrix_cofactor() {
+        let m = Matrix::from_vec(3, 3, vec![3.0, 5.0, 0.0, 2.0, -1.0, -7.0, 6.0, -1.0, 5.0])
+            .expect("matrix dimensions should match data length");
+        let cofactor = m
+            .cofactor(0, 0)
+            .expect("cofactor calculation should succeed");
+        assert_abs_diff_eq!(cofactor, -12.0);
+        let cofactor = m
+            .cofactor(1, 0)
+            .expect("cofactor calculation should succeed");
+        assert_abs_diff_eq!(cofactor, -25.0);
+    }
+
+    #[test]
+    fn test_matrix_determinant() {
+        let m = Matrix::from_vec(3, 3, vec![1.0, 2.0, 6.0, -5.0, 8.0, -4.0, 2.0, 6.0, 4.0])
+            .expect("matrix dimensions should match data length");
+        let det = m
+            .determinant()
+            .expect("determinant calculation should succeed");
+        assert_abs_diff_eq!(det, -196.0);
+
+        let m = Matrix::from_vec(
+            4,
+            4,
+            vec![
+                -2.0, -8.0, 3.0, 5.0, -3.0, 1.0, 7.0, 3.0, 1.0, 2.0, -9.0, 6.0, -6.0, 7.0, 7.0,
+                -9.0,
+            ],
+        )
+        .expect("matrix dimensions should match data length");
+        let det = m
+            .determinant()
+            .expect("determinant calculation should succeed");
+        assert_abs_diff_eq!(det, -4071.0);
+    }
+
+    #[test]
+    fn test_matrix_determinant_non_square() {
+        let m = Matrix::new(2, 3);
+        let result = m.determinant();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_matrix_invertibility() {
+        let m = Matrix::from_vec(
+            4,
+            4,
+            vec![
+                6.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 6.0, 4.0, -9.0, 3.0, -7.0, 9.0, 1.0, 7.0, -6.0,
+            ],
+        )
+        .expect("matrix dimensions should match data length");
+        let is_invertible = m
+            .is_invertible()
+            .expect("invertibility check should succeed");
+        assert!(is_invertible);
+
+        let m = Matrix::from_vec(
+            4,
+            4,
+            vec![
+                -4.0, 2.0, -2.0, -3.0, 9.0, 6.0, 2.0, 6.0, 0.0, -5.0, 1.0, -5.0, 0.0, 0.0, 0.0, 0.0,
+            ],
+        )
+        .expect("matrix dimensions should match data length");
+        let is_invertible = m.is_invertible().expect(
+            "invertibility check should
+    succeed",
+        );
+        assert!(!is_invertible);
+    }
+
+    #[test]
+    fn test_matrix_inverse() {
+        let m1 = Matrix::from_vec(
+            4,
+            4,
+            vec![
+                8.0, -5.0, 9.0, 2.0, 7.0, 5.0, 6.0, 1.0, -6.0, 0.0, 9.0, 6.0, -3.0, 0.0, -9.0, -4.0,
+            ],
+        )
+        .expect("matrix dimensions should match data length");
+        let inverse1 = m1
+            .inverse()
+            .expect("inverse calculation should succeed")
+            .expect("matrix should be invertible");
+        let expected = Matrix::from_vec(
+            4,
+            4,
+            vec![
+                -0.15384615384615385,
+                -0.15384615384615385,
+                -0.28205128205128205,
+                -0.5384615384615384,
+                -0.07692307692307693,
+                0.12307692307692308,
+                0.02564102564102564,
+                0.03076923076923077,
+                0.358974358974359,
+                0.358974358974359,
+                0.4358974358974359,
+                0.9230769230769231,
+                -0.6923076923076923,
+                -0.6923076923076923,
+                -0.7692307692307693,
+                -1.9230769230769231,
+            ],
+        )
+        .expect("matrix dimensions should match data length");
+        assert_eq!(inverse1, expected);
+
+        let m2 = Matrix::from_vec(
+            4,
+            4,
+            vec![
+                9.0, 3.0, 0.0, 9.0, -5.0, -2.0, -6.0, -3.0, -4.0, 9.0, 6.0, 4.0, -7.0, 6.0, 6.0,
+                2.0,
+            ],
+        )
+        .expect("matrix dimensions should match data length");
+        let inverse2 = m2
+            .inverse()
+            .expect("inverse calculation should succeed")
+            .expect("matrix should be invertible");
+        let expected = Matrix::from_vec(
+            4,
+            4,
+            vec![
+                -0.040740740740740744,
+                -0.07777777777777778,
+                0.14444444444444443,
+                -0.2222222222222222,
+                -0.07777777777777778,
+                0.03333333333333333,
+                0.36666666666666664,
+                -0.3333333333333333,
+                -0.029012345679012345,
+                -0.1462962962962963,
+                -0.10925925925925926,
+                0.12962962962962962,
+                0.17777777777777778,
+                0.06666666666666667,
+                -0.26666666666666666,
+                0.3333333333333333,
+            ],
+        )
+        .expect("matrix dimensions should match data length");
+        assert_eq!(inverse2, expected);
     }
 }
