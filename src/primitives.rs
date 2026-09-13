@@ -1,9 +1,15 @@
-use anyhow::{Result, ensure};
 use approx::abs_diff_eq;
 use std::{
     fmt::Display,
     ops::{Add, Div, Mul, Neg, Sub},
 };
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum GeometryError {
+    #[error("Cannot normalize a zero vector")]
+    ZeroVectorNormalization,
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct Point {
@@ -85,9 +91,11 @@ impl Vector {
         (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
     }
 
-    pub fn normalize(&self) -> Result<Self> {
+    pub fn normalize(&self) -> Result<Vector, GeometryError> {
         let mag = self.magnitude();
-        ensure!(mag != 0.0, "Cannot normalize a zero vector");
+        if mag == 0.0 {
+            return Err(GeometryError::ZeroVectorNormalization);
+        }
         Ok(Vector::new(self.x / mag, self.y / mag, self.z / mag))
     }
 
