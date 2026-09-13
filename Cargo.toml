@@ -8,3 +8,4 @@ license = "Unlicense"
 [dependencies]
 anyhow = "1.0"
 approx = "0.5"
+thiserror = "2.0"
