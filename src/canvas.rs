@@ -1,6 +1,7 @@
+use nalgebra::Vector3;
 use std::fs::File;
 use std::io::Write;
-use std::ops::{Add, Mul, Sub};
+use std::ops::Mul;
 use std::path::Path;
 use thiserror::Error;
 
@@ -14,63 +15,23 @@ pub enum CanvasError {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Color {
-    pub r: f64,
-    pub g: f64,
-    pub b: f64,
-}
+pub struct Color(Vector3<f64>);
 
 impl Color {
     pub fn new(r: f64, g: f64, b: f64) -> Self {
-        Color { r, g, b }
+        Color(Vector3::new(r, g, b))
     }
-}
 
-impl Add<Color> for Color {
-    type Output = Color;
-
-    fn add(self, rhs: Color) -> Self::Output {
-        Color {
-            r: self.r + rhs.r,
-            g: self.g + rhs.g,
-            b: self.b + rhs.b,
-        }
+    pub fn r(&self) -> f64 {
+        self.0.x
     }
-}
 
-impl Sub<Color> for Color {
-    type Output = Color;
-
-    fn sub(self, rhs: Color) -> Self::Output {
-        Color {
-            r: self.r - rhs.r,
-            g: self.g - rhs.g,
-            b: self.b - rhs.b,
-        }
+    pub fn g(&self) -> f64 {
+        self.0.y
     }
-}
 
-impl Mul<f64> for Color {
-    type Output = Color;
-
-    fn mul(self, rhs: f64) -> Self::Output {
-        Color {
-            r: self.r * rhs,
-            g: self.g * rhs,
-            b: self.b * rhs,
-        }
-    }
-}
-
-impl Mul<Color> for f64 {
-    type Output = Color;
-
-    fn mul(self, rhs: Color) -> Self::Output {
-        Color {
-            r: self * rhs.r,
-            g: self * rhs.g,
-            b: self * rhs.b,
-        }
+    pub fn b(&self) -> f64 {
+        self.0.z
     }
 }
 
@@ -78,11 +39,11 @@ impl Mul<Color> for Color {
     type Output = Color;
 
     fn mul(self, rhs: Color) -> Self::Output {
-        Color {
-            r: self.r * rhs.r,
-            g: self.g * rhs.g,
-            b: self.b * rhs.b,
-        }
+        Color(Vector3::new(
+            self.r() * rhs.r(),
+            self.g() * rhs.g(),
+            self.b() * rhs.b(),
+        ))
     }
 }
 
@@ -135,9 +96,9 @@ impl Canvas {
 
         for (i, pixel) in self.pixels.iter().enumerate() {
             let components = [
-                (pixel.r * 255.0).round().clamp(0.0, 255.0) as u8,
-                (pixel.g * 255.0).round().clamp(0.0, 255.0) as u8,
-                (pixel.b * 255.0).round().clamp(0.0, 255.0) as u8,
+                (pixel.r() * 255.0).round().clamp(0.0, 255.0) as u8,
+                (pixel.g() * 255.0).round().clamp(0.0, 255.0) as u8,
+                (pixel.b() * 255.0).round().clamp(0.0, 255.0) as u8,
             ];
 
             for component in components {
@@ -174,54 +135,13 @@ mod tests {
     use approx::assert_abs_diff_eq;
 
     #[test]
-    fn test_color_new() {
-        let color = Color::new(-0.5, 0.25, 0.75);
-        assert_abs_diff_eq!(color.r, -0.5);
-        assert_abs_diff_eq!(color.g, 0.25);
-        assert_abs_diff_eq!(color.b, 0.75);
-    }
-
-    #[test]
-    fn test_color_add() {
-        let c1 = Color::new(0.9, 0.6, 0.75);
-        let c2 = Color::new(0.7, 0.1, 0.25);
-        let result = c1 + c2;
-        assert_abs_diff_eq!(result.r, 1.6);
-        assert_abs_diff_eq!(result.g, 0.7);
-        assert_abs_diff_eq!(result.b, 1.0);
-    }
-
-    #[test]
-    fn test_color_sub() {
-        let c1 = Color::new(1.0, 2.0, 3.0);
-        let c2 = Color::new(0.5, 1.0, 1.5);
-        let result = c1 - c2;
-        assert_abs_diff_eq!(result.r, 0.5);
-        assert_abs_diff_eq!(result.g, 1.0);
-        assert_abs_diff_eq!(result.b, 1.5);
-    }
-
-    #[test]
-    fn test_color_mul_scalar() {
-        let c = Color::new(0.2, 0.3, 0.4);
-        let result = c * 2.0;
-        assert_abs_diff_eq!(result.r, 0.4);
-        assert_abs_diff_eq!(result.g, 0.6);
-        assert_abs_diff_eq!(result.b, 0.8);
-        let result2 = 2.0 * c;
-        assert_abs_diff_eq!(result2.r, 0.4);
-        assert_abs_diff_eq!(result2.g, 0.6);
-        assert_abs_diff_eq!(result2.b, 0.8);
-    }
-
-    #[test]
     fn test_color_mul_color() {
         let c1 = Color::new(1.0, 0.2, 0.4);
         let c2 = Color::new(0.9, 1.0, 0.1);
         let result = c1 * c2;
-        assert_abs_diff_eq!(result.r, 0.9);
-        assert_abs_diff_eq!(result.g, 0.2);
-        assert_abs_diff_eq!(result.b, 0.04);
+        assert_abs_diff_eq!(result.r(), 0.9);
+        assert_abs_diff_eq!(result.g(), 0.2);
+        assert_abs_diff_eq!(result.b(), 0.04);
     }
 
     #[test]
@@ -230,9 +150,9 @@ mod tests {
         assert_eq!(canvas.width, 10);
         assert_eq!(canvas.height, 20);
         for pixel in canvas.pixels {
-            assert_abs_diff_eq!(pixel.r, 0.0);
-            assert_abs_diff_eq!(pixel.g, 0.0);
-            assert_abs_diff_eq!(pixel.b, 0.0);
+            assert_abs_diff_eq!(pixel.r(), 0.0);
+            assert_abs_diff_eq!(pixel.g(), 0.0);
+            assert_abs_diff_eq!(pixel.b(), 0.0);
         }
     }
 
@@ -242,9 +162,9 @@ mod tests {
         let red = Color::new(1.0, 0.0, 0.0);
         canvas.write_pixel(2, 3, red).unwrap();
         let index = 3 * canvas.width + 2;
-        assert_abs_diff_eq!(canvas.pixels[index].r, 1.0);
-        assert_abs_diff_eq!(canvas.pixels[index].g, 0.0);
-        assert_abs_diff_eq!(canvas.pixels[index].b, 0.0);
+        assert_abs_diff_eq!(canvas.pixels[index].r(), 1.0);
+        assert_abs_diff_eq!(canvas.pixels[index].g(), 0.0);
+        assert_abs_diff_eq!(canvas.pixels[index].b(), 0.0);
 
         // Test out of bounds
         let result = canvas.write_pixel(10, 3, red);
