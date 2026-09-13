@@ -1,19 +1,19 @@
 use merlin_rt::canvas::{Canvas, Color};
-use merlin_rt::primitives::{Point, Vector};
+use merlin_rt::primitives::{Point3, Vec3};
 
 use anyhow::Result;
 use std::path::Path;
 
 #[derive(Debug)]
 struct Projectile {
-    position: Point,
-    velocity: Vector,
+    position: Point3,
+    velocity: Vec3,
 }
 
 #[derive(Debug)]
 struct Environment {
-    gravity: Vector,
-    wind: Vector,
+    gravity: Vec3,
+    wind: Vec3,
 }
 
 fn tick(env: &Environment, proj: &Projectile, canvas: &mut Canvas) -> Result<Projectile> {
@@ -34,13 +34,13 @@ fn main() -> Result<()> {
     let mut canvas = Canvas::new(900, 550);
     let p = Projectile {
         // Projectile starts one unit above the origin.
-        position: Point::new(0.0, 1.0, 0.0),
+        position: Point3::new(0.0, 1.0, 0.0),
         // Velocity is normalized to one unit per tick.
-        velocity: Vector::new(1.0, 1.8, 0.0).normalize()? * 11.25,
+        velocity: Vec3::new(1.0, 1.8, 0.0).normalize()? * 11.25,
     };
     let e = Environment {
-        gravity: Vector::new(0.0, -0.1, 0.0),
-        wind: Vector::new(-0.01, 0.0, 0.0),
+        gravity: Vec3::new(0.0, -0.1, 0.0),
+        wind: Vec3::new(-0.01, 0.0, 0.0),
     };
 
     println!("Initial Position: {}", p.position);

@@ -26,19 +26,19 @@ pub enum GeometryError {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Point {
+pub struct Point3 {
     pub x: f64,
     pub y: f64,
     pub z: f64,
 }
 
-impl Point {
+impl Point3 {
     pub fn new(x: f64, y: f64, z: f64) -> Self {
-        Point { x, y, z }
+        Point3 { x, y, z }
     }
 }
 
-impl PartialEq for Point {
+impl PartialEq for Point3 {
     fn eq(&self, other: &Self) -> bool {
         abs_diff_eq!(self.x, other.x)
             && abs_diff_eq!(self.y, other.y)
@@ -46,11 +46,11 @@ impl PartialEq for Point {
     }
 }
 
-impl Add<Vector> for Point {
-    type Output = Point;
+impl Add<Vec3> for Point3 {
+    type Output = Point3;
 
-    fn add(self, rhs: Vector) -> Self::Output {
-        Point {
+    fn add(self, rhs: Vec3) -> Self::Output {
+        Point3 {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
             z: self.z + rhs.z,
@@ -58,11 +58,11 @@ impl Add<Vector> for Point {
     }
 }
 
-impl Sub<Point> for Point {
-    type Output = Vector;
+impl Sub<Point3> for Point3 {
+    type Output = Vec3;
 
-    fn sub(self, rhs: Point) -> Self::Output {
-        Vector {
+    fn sub(self, rhs: Point3) -> Self::Output {
+        Vec3 {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
             z: self.z - rhs.z,
@@ -70,11 +70,11 @@ impl Sub<Point> for Point {
     }
 }
 
-impl Sub<Vector> for Point {
-    type Output = Point;
+impl Sub<Vec3> for Point3 {
+    type Output = Point3;
 
-    fn sub(self, rhs: Vector) -> Self::Output {
-        Point {
+    fn sub(self, rhs: Vec3) -> Self::Output {
+        Point3 {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
             z: self.z - rhs.z,
@@ -82,7 +82,7 @@ impl Sub<Vector> for Point {
     }
 }
 
-impl Display for Point {
+impl Display for Point3 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Write up to 3 decimal places for better readability
         write!(f, "Point({:.3}, {:.3}, {:.3})", self.x, self.y, self.z)
@@ -90,27 +90,27 @@ impl Display for Point {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Vector {
+pub struct Vec3 {
     pub x: f64,
     pub y: f64,
     pub z: f64,
 }
 
-impl Vector {
+impl Vec3 {
     pub fn new(x: f64, y: f64, z: f64) -> Self {
-        Vector { x, y, z }
+        Vec3 { x, y, z }
     }
 
     pub fn magnitude(&self) -> f64 {
         (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
     }
 
-    pub fn normalize(&self) -> Result<Vector, GeometryError> {
+    pub fn normalize(&self) -> Result<Vec3, GeometryError> {
         let mag = self.magnitude();
         if mag == 0.0 {
             return Err(GeometryError::ZeroVectorNormalization);
         }
-        Ok(Vector::new(self.x / mag, self.y / mag, self.z / mag))
+        Ok(Vec3::new(self.x / mag, self.y / mag, self.z / mag))
     }
 
     pub fn dot(&self, other: &Self) -> f64 {
@@ -118,7 +118,7 @@ impl Vector {
     }
 
     pub fn cross(&self, other: &Self) -> Self {
-        Vector {
+        Vec3 {
             x: self.y * other.z - self.z * other.y,
             y: self.z * other.x - self.x * other.z,
             z: self.x * other.y - self.y * other.x,
@@ -126,7 +126,7 @@ impl Vector {
     }
 }
 
-impl PartialEq for Vector {
+impl PartialEq for Vec3 {
     fn eq(&self, other: &Self) -> bool {
         abs_diff_eq!(self.x, other.x)
             && abs_diff_eq!(self.y, other.y)
@@ -134,11 +134,11 @@ impl PartialEq for Vector {
     }
 }
 
-impl Add<Point> for Vector {
-    type Output = Point;
+impl Add<Point3> for Vec3 {
+    type Output = Point3;
 
-    fn add(self, rhs: Point) -> Self::Output {
-        Point {
+    fn add(self, rhs: Point3) -> Self::Output {
+        Point3 {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
             z: self.z + rhs.z,
@@ -146,11 +146,11 @@ impl Add<Point> for Vector {
     }
 }
 
-impl Add<Vector> for Vector {
-    type Output = Vector;
+impl Add<Vec3> for Vec3 {
+    type Output = Vec3;
 
-    fn add(self, rhs: Vector) -> Self::Output {
-        Vector {
+    fn add(self, rhs: Vec3) -> Self::Output {
+        Vec3 {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
             z: self.z + rhs.z,
@@ -158,11 +158,11 @@ impl Add<Vector> for Vector {
     }
 }
 
-impl Sub<Vector> for Vector {
-    type Output = Vector;
+impl Sub<Vec3> for Vec3 {
+    type Output = Vec3;
 
-    fn sub(self, rhs: Vector) -> Self::Output {
-        Vector {
+    fn sub(self, rhs: Vec3) -> Self::Output {
+        Vec3 {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
             z: self.z - rhs.z,
@@ -170,11 +170,11 @@ impl Sub<Vector> for Vector {
     }
 }
 
-impl Neg for Vector {
-    type Output = Vector;
+impl Neg for Vec3 {
+    type Output = Vec3;
 
     fn neg(self) -> Self::Output {
-        Vector {
+        Vec3 {
             x: -self.x,
             y: -self.y,
             z: -self.z,
@@ -182,11 +182,11 @@ impl Neg for Vector {
     }
 }
 
-impl Mul<f64> for Vector {
-    type Output = Vector;
+impl Mul<f64> for Vec3 {
+    type Output = Vec3;
 
     fn mul(self, rhs: f64) -> Self::Output {
-        Vector {
+        Vec3 {
             x: self.x * rhs,
             y: self.y * rhs,
             z: self.z * rhs,
@@ -194,11 +194,11 @@ impl Mul<f64> for Vector {
     }
 }
 
-impl Mul<Vector> for f64 {
-    type Output = Vector;
+impl Mul<Vec3> for f64 {
+    type Output = Vec3;
 
-    fn mul(self, rhs: Vector) -> Self::Output {
-        Vector {
+    fn mul(self, rhs: Vec3) -> Self::Output {
+        Vec3 {
             x: rhs.x * self,
             y: rhs.y * self,
             z: rhs.z * self,
@@ -206,11 +206,11 @@ impl Mul<Vector> for f64 {
     }
 }
 
-impl Div<f64> for Vector {
-    type Output = Vector;
+impl Div<f64> for Vec3 {
+    type Output = Vec3;
 
     fn div(self, rhs: f64) -> Self::Output {
-        Vector {
+        Vec3 {
             x: self.x / rhs,
             y: self.y / rhs,
             z: self.z / rhs,
@@ -218,7 +218,7 @@ impl Div<f64> for Vector {
     }
 }
 
-impl Display for Vector {
+impl Display for Vec3 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Write up to 3 decimal places for better readability
         write!(f, "Vector({:.3}, {:.3}, {:.3})", self.x, self.y, self.z)
@@ -395,8 +395,8 @@ impl Mul<&Matrix> for &Matrix {
     }
 }
 
-impl From<Point> for Matrix {
-    fn from(point: Point) -> Self {
+impl From<Point3> for Matrix {
+    fn from(point: Point3) -> Self {
         Matrix {
             rows: 4,
             cols: 1,
@@ -405,8 +405,8 @@ impl From<Point> for Matrix {
     }
 }
 
-impl From<Vector> for Matrix {
-    fn from(vector: Vector) -> Self {
+impl From<Vec3> for Matrix {
+    fn from(vector: Vec3) -> Self {
         Matrix {
             rows: 4,
             cols: 1,
@@ -422,7 +422,7 @@ mod tests {
 
     #[test]
     fn test_point_creation() {
-        let p = Point::new(4.3, -4.2, 3.1);
+        let p = Point3::new(4.3, -4.2, 3.1);
         assert_abs_diff_eq!(p.x, 4.3);
         assert_abs_diff_eq!(p.y, -4.2);
         assert_abs_diff_eq!(p.z, 3.1);
@@ -430,42 +430,42 @@ mod tests {
 
     #[test]
     fn test_point_equality() {
-        let p1 = Point::new(1.0, 2.0, 3.0);
-        let p2 = Point::new(1.0, 2.0, 3.0);
-        let p3 = Point::new(1.0, 2.0, 3.1);
+        let p1 = Point3::new(1.0, 2.0, 3.0);
+        let p2 = Point3::new(1.0, 2.0, 3.0);
+        let p3 = Point3::new(1.0, 2.0, 3.1);
         assert_eq!(p1, p2);
         assert_ne!(p1, p3);
     }
 
     #[test]
     fn test_point_vector_addition() {
-        let p = Point::new(1.0, 2.0, 3.0);
-        let v = Vector::new(4.0, 5.0, 6.0);
+        let p = Point3::new(1.0, 2.0, 3.0);
+        let v = Vec3::new(4.0, 5.0, 6.0);
         let result = p + v;
         let result2 = v + p;
-        assert_eq!(result, Point::new(5.0, 7.0, 9.0));
-        assert_eq!(result2, Point::new(5.0, 7.0, 9.0));
+        assert_eq!(result, Point3::new(5.0, 7.0, 9.0));
+        assert_eq!(result2, Point3::new(5.0, 7.0, 9.0));
     }
 
     #[test]
     fn test_point_subtraction() {
-        let p1 = Point::new(4.0, 5.0, 6.0);
-        let p2 = Point::new(1.0, 2.0, 3.0);
+        let p1 = Point3::new(4.0, 5.0, 6.0);
+        let p2 = Point3::new(1.0, 2.0, 3.0);
         let result = p1 - p2;
-        assert_eq!(result, Vector::new(3.0, 3.0, 3.0));
+        assert_eq!(result, Vec3::new(3.0, 3.0, 3.0));
     }
 
     #[test]
     fn test_point_vector_subtraction() {
-        let p = Point::new(4.0, 5.0, 6.0);
-        let v = Vector::new(1.0, 2.0, 3.0);
+        let p = Point3::new(4.0, 5.0, 6.0);
+        let v = Vec3::new(1.0, 2.0, 3.0);
         let result = p - v;
-        assert_eq!(result, Point::new(3.0, 3.0, 3.0));
+        assert_eq!(result, Point3::new(3.0, 3.0, 3.0));
     }
 
     #[test]
     fn test_vector_creation() {
-        let v = Vector::new(4.3, -4.2, 3.1);
+        let v = Vec3::new(4.3, -4.2, 3.1);
         assert_abs_diff_eq!(v.x, 4.3);
         assert_abs_diff_eq!(v.y, -4.2);
         assert_abs_diff_eq!(v.z, 3.1);
@@ -473,59 +473,59 @@ mod tests {
 
     #[test]
     fn test_vector_equality() {
-        let v1 = Vector::new(1.0, 2.0, 3.0);
-        let v2 = Vector::new(1.0, 2.0, 3.0);
-        let v3 = Vector::new(1.0, 2.0, 3.1);
+        let v1 = Vec3::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(1.0, 2.0, 3.0);
+        let v3 = Vec3::new(1.0, 2.0, 3.1);
         assert_eq!(v1, v2);
         assert_ne!(v1, v3);
     }
 
     #[test]
     fn test_vector_addition() {
-        let v1 = Vector::new(1.0, 2.0, 3.0);
-        let v2 = Vector::new(4.0, 5.0, 6.0);
+        let v1 = Vec3::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(4.0, 5.0, 6.0);
         let result = v1 + v2;
-        assert_eq!(result, Vector::new(5.0, 7.0, 9.0));
+        assert_eq!(result, Vec3::new(5.0, 7.0, 9.0));
     }
 
     #[test]
     fn test_vector_subtraction() {
-        let v1 = Vector::new(4.0, 5.0, 6.0);
-        let v2 = Vector::new(1.0, 2.0, 3.0);
+        let v1 = Vec3::new(4.0, 5.0, 6.0);
+        let v2 = Vec3::new(1.0, 2.0, 3.0);
         let result = v1 - v2;
-        assert_eq!(result, Vector::new(3.0, 3.0, 3.0));
+        assert_eq!(result, Vec3::new(3.0, 3.0, 3.0));
     }
 
     #[test]
     fn test_vector_negation() {
-        let v = Vector::new(1.0, -2.0, 3.0);
+        let v = Vec3::new(1.0, -2.0, 3.0);
         let result = -v;
-        assert_eq!(result, Vector::new(-1.0, 2.0, -3.0));
+        assert_eq!(result, Vec3::new(-1.0, 2.0, -3.0));
     }
 
     #[test]
     fn test_vector_scalar_multiplication() {
-        let v = Vector::new(1.0, -2.0, 3.0);
+        let v = Vec3::new(1.0, -2.0, 3.0);
         let result = v * 3.0;
-        assert_eq!(result, Vector::new(3.0, -6.0, 9.0));
+        assert_eq!(result, Vec3::new(3.0, -6.0, 9.0));
         let result2 = 3.0 * v;
-        assert_eq!(result2, Vector::new(3.0, -6.0, 9.0));
+        assert_eq!(result2, Vec3::new(3.0, -6.0, 9.0));
     }
 
     #[test]
     fn test_vector_scalar_division() {
-        let v = Vector::new(3.0, -6.0, 9.0);
+        let v = Vec3::new(3.0, -6.0, 9.0);
         let result = v / 3.0;
-        assert_eq!(result, Vector::new(1.0, -2.0, 3.0));
+        assert_eq!(result, Vec3::new(1.0, -2.0, 3.0));
     }
 
     #[test]
     fn test_vector_magnitude() {
-        let v1 = Vector::new(1.0, 0.0, 0.0);
-        let v2 = Vector::new(0.0, 1.0, 0.0);
-        let v3 = Vector::new(0.0, 0.0, 1.0);
-        let v4 = Vector::new(1.0, 2.0, 3.0);
-        let v5 = Vector::new(-1.0, -2.0, -3.0);
+        let v1 = Vec3::new(1.0, 0.0, 0.0);
+        let v2 = Vec3::new(0.0, 1.0, 0.0);
+        let v3 = Vec3::new(0.0, 0.0, 1.0);
+        let v4 = Vec3::new(1.0, 2.0, 3.0);
+        let v5 = Vec3::new(-1.0, -2.0, -3.0);
         assert_abs_diff_eq!(v1.magnitude(), 1.0);
         assert_abs_diff_eq!(v2.magnitude(), 1.0);
         assert_abs_diff_eq!(v3.magnitude(), 1.0);
@@ -535,39 +535,39 @@ mod tests {
 
     #[test]
     fn test_vector_normalization() {
-        let v = Vector::new(4.0, 0.0, 0.0);
+        let v = Vec3::new(4.0, 0.0, 0.0);
         let normalized = v.normalize().unwrap();
-        assert_eq!(normalized, Vector::new(1.0, 0.0, 0.0));
+        assert_eq!(normalized, Vec3::new(1.0, 0.0, 0.0));
 
-        let v2 = Vector::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(1.0, 2.0, 3.0);
         let normalized2 = v2.normalize().unwrap();
         let mag = (14.0f64).sqrt();
-        assert_eq!(normalized2, Vector::new(1.0 / mag, 2.0 / mag, 3.0 / mag));
+        assert_eq!(normalized2, Vec3::new(1.0 / mag, 2.0 / mag, 3.0 / mag));
 
-        let zero_vector = Vector::new(0.0, 0.0, 0.0);
+        let zero_vector = Vec3::new(0.0, 0.0, 0.0);
         let result = zero_vector.normalize();
         assert!(result.is_err());
     }
 
     #[test]
     fn test_vector_dot_product() {
-        let v1 = Vector::new(1.0, 2.0, 3.0);
-        let v2 = Vector::new(4.0, -5.0, 6.0);
+        let v1 = Vec3::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(4.0, -5.0, 6.0);
         let dot_product = v1.dot(&v2);
         assert_abs_diff_eq!(dot_product, 12.0);
 
-        let u1 = Vector::new(1.0, 0.0, 0.0);
-        let u2 = Vector::new(-1.0, 0.0, 0.0);
+        let u1 = Vec3::new(1.0, 0.0, 0.0);
+        let u2 = Vec3::new(-1.0, 0.0, 0.0);
         let dot_product2 = u1.dot(&u2);
         assert_abs_diff_eq!(dot_product2, -1.0);
     }
 
     #[test]
     fn test_vector_cross_product() {
-        let v1 = Vector::new(1.0, 2.0, 3.0);
-        let v2 = Vector::new(4.0, 5.0, 6.0);
+        let v1 = Vec3::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(4.0, 5.0, 6.0);
         let cross_product = v1.cross(&v2);
-        assert_eq!(cross_product, Vector::new(-3.0, 6.0, -3.0));
+        assert_eq!(cross_product, Vec3::new(-3.0, 6.0, -3.0));
     }
 
     #[test]
@@ -682,7 +682,7 @@ mod tests {
 
     #[test]
     fn test_matrix_from_point() {
-        let p = Point::new(1.0, 2.0, 3.0);
+        let p = Point3::new(1.0, 2.0, 3.0);
         let m: Matrix = p.into();
         let expected = Matrix::from_vec(4, 1, vec![1.0, 2.0, 3.0, 1.0])
             .expect("matrix dimensions should match data length");
@@ -693,7 +693,7 @@ mod tests {
 
     #[test]
     fn test_matrix_from_vector() {
-        let v = Vector::new(1.0, 2.0, 3.0);
+        let v = Vec3::new(1.0, 2.0, 3.0);
         let m: Matrix = v.into();
         let expected = Matrix::from_vec(4, 1, vec![1.0, 2.0, 3.0, 0.0])
             .expect("matrix dimensions should match data length");
