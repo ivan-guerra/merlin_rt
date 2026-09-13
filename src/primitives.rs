@@ -329,6 +329,18 @@ impl Matrix {
     }
 }
 
+impl Display for Matrix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for i in 0..self.rows {
+            for j in 0..self.cols {
+                write!(f, "{:>8.3} ", self[i][j])?;
+            }
+            writeln!(f)?;
+        }
+        Ok(())
+    }
+}
+
 impl PartialEq for Matrix {
     fn eq(&self, other: &Self) -> bool {
         if self.rows != other.rows || self.cols != other.cols {
