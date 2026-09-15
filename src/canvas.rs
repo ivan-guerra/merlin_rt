@@ -135,7 +135,45 @@ mod tests {
     use approx::assert_abs_diff_eq;
 
     #[test]
-    fn test_color_mul_color() {
+    fn test_colors_are_rgb_tuples() {
+        let c = Color::new(-0.5, 0.4, 1.7);
+        assert_abs_diff_eq!(c.r(), -0.5);
+        assert_abs_diff_eq!(c.g(), 0.4);
+        assert_abs_diff_eq!(c.b(), 1.7);
+    }
+
+    #[test]
+    fn test_adding_colors() {
+        let c1 = Color::new(0.9, 0.6, 0.75);
+        let c2 = Color::new(0.7, 0.1, 0.25);
+        let result = Color::new(c1.r() + c2.r(), c1.g() + c2.g(), c1.b() + c2.b());
+        assert_abs_diff_eq!(result.r(), 1.6);
+        assert_abs_diff_eq!(result.g(), 0.7);
+        assert_abs_diff_eq!(result.b(), 1.0);
+    }
+
+    #[test]
+    fn test_subtracting_colors() {
+        let c1 = Color::new(0.9, 0.6, 0.75);
+        let c2 = Color::new(0.7, 0.1, 0.25);
+        let result = Color::new(c1.r() - c2.r(), c1.g() - c2.g(), c1.b() - c2.b());
+        assert_abs_diff_eq!(result.r(), 0.2);
+        assert_abs_diff_eq!(result.g(), 0.5);
+        assert_abs_diff_eq!(result.b(), 0.5);
+    }
+
+    #[test]
+    fn test_multiplying_color_by_scalar() {
+        let c = Color::new(0.2, 0.3, 0.4);
+        let scalar = 2.0;
+        let result = Color::new(c.r() * scalar, c.g() * scalar, c.b() * scalar);
+        assert_abs_diff_eq!(result.r(), 0.4);
+        assert_abs_diff_eq!(result.g(), 0.6);
+        assert_abs_diff_eq!(result.b(), 0.8);
+    }
+
+    #[test]
+    fn test_multiplying_colors() {
         let c1 = Color::new(1.0, 0.2, 0.4);
         let c2 = Color::new(0.9, 1.0, 0.1);
         let result = c1 * c2;
@@ -145,7 +183,7 @@ mod tests {
     }
 
     #[test]
-    fn test_canvas_new() {
+    fn test_creating_a_canvas() {
         let canvas = Canvas::new(10, 20);
         assert_eq!(canvas.width, 10);
         assert_eq!(canvas.height, 20);
@@ -157,7 +195,7 @@ mod tests {
     }
 
     #[test]
-    fn test_write_pixel() {
+    fn test_writing_pixels_to_a_canvas() {
         let mut canvas = Canvas::new(10, 20);
         let red = Color::new(1.0, 0.0, 0.0);
         canvas.write_pixel(2, 3, red).unwrap();
@@ -172,7 +210,7 @@ mod tests {
     }
 
     #[test]
-    fn test_construct_ppm_header() {
+    fn test_constructing_the_ppm_header() {
         let canvas = Canvas::new(5, 3);
         let header = canvas.construct_ppm_header();
         let expected_header = "P3\n5 3\n255\n";
@@ -180,7 +218,7 @@ mod tests {
     }
 
     #[test]
-    fn test_construct_ppm_pixel_data() {
+    fn test_constructing_the_ppm_pixel_data() {
         let mut canvas = Canvas::new(5, 3);
         let c1 = Color::new(1.5, 0.0, 0.0);
         let c2 = Color::new(0.0, 0.5, 0.0);
@@ -197,7 +235,7 @@ mod tests {
     }
 
     #[test]
-    fn test_construct_ppm_pixel_data_line_length() {
+    fn test_splitting_long_lines_in_ppm_files() {
         let mut canvas = Canvas::new(10, 2);
         let color = Color::new(1.0, 0.8, 0.6);
         for y in 0..2 {
@@ -215,7 +253,7 @@ mod tests {
     }
 
     #[test]
-    fn test_construct_ppm_pixel_data_terminating_newline() {
+    fn test_ppm_files_are_terminated_by_a_newline_char() {
         let mut canvas = Canvas::new(5, 3);
         let color = Color::new(1.0, 0.8, 0.6);
         for y in 0..3 {
