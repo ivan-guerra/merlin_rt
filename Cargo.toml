@@ -10,3 +10,4 @@ anyhow = "1.0"
 approx = "0.5"
 nalgebra = "0.35"
 thiserror = "2.0"
+uuid = { version = "1.26", features = ["v4"] }
