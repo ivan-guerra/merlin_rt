@@ -1,5 +1,6 @@
 use merlin_rt::canvas::{Canvas, Color};
-use merlin_rt::ray::{Intersectable, Intersection, Ray, Sphere};
+use merlin_rt::ray::{Intersectable, Intersection, Ray};
+use merlin_rt::sphere::Sphere;
 use merlin_rt::transforms::{Axis, Transform};
 
 use anyhow::Result;
