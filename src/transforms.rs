@@ -53,6 +53,10 @@ impl Transform {
         Ok(value.apply_matrix(&self.inverse()?))
     }
 
+    pub fn apply_transpose_inverse<T: Transformable>(&self, value: T) -> Result<T, TransformError> {
+        Ok(value.apply_matrix(&self.inverse()?.transpose()))
+    }
+
     fn inverse(&self) -> Result<Matrix4<f64>, TransformError> {
         self.matrix()
             .try_inverse()
@@ -117,6 +121,7 @@ impl Transformable for Point3<f64> {
             ),
             Transform::Sequence(transforms) => transforms
                 .iter()
+                .rev()
                 .fold(self, |point, transform| transform.apply(point)),
             Transform::Identity => self,
         }
@@ -152,6 +157,7 @@ impl Transformable for Vector3<f64> {
             ),
             Transform::Sequence(transforms) => transforms
                 .iter()
+                .rev()
                 .fold(self, |vector, transform| transform.apply(vector)),
             Transform::Identity => self,
         }
@@ -258,5 +264,182 @@ mod tests {
         assert_abs_diff_eq!(p2.x, 0.0);
         assert_abs_diff_eq!(p2.y, 2f64.sqrt() / 2.0);
         assert_abs_diff_eq!(p2.z, -2f64.sqrt() / 2.0);
+    }
+
+    #[test]
+    fn test_rotating_a_point_around_y_axis() {
+        let p = Point3::new(0.0, 0.0, 1.0);
+        let half_quarter = Transform::Rotate {
+            axis: Axis::Y,
+            angle: std::f64::consts::FRAC_PI_4,
+        };
+        let full_quarter = Transform::Rotate {
+            axis: Axis::Y,
+            angle: std::f64::consts::FRAC_PI_2,
+        };
+        let p2 = half_quarter.apply(p);
+        let p3 = full_quarter.apply(p);
+
+        assert_abs_diff_eq!(p2.x, 2f64.sqrt() / 2.0);
+        assert_abs_diff_eq!(p2.y, 0.0);
+        assert_abs_diff_eq!(p2.z, 2f64.sqrt() / 2.0);
+
+        assert_abs_diff_eq!(p3.x, 1.0);
+        assert_abs_diff_eq!(p3.y, 0.0);
+        assert_abs_diff_eq!(p3.z, 0.0);
+    }
+
+    #[test]
+    fn test_rotating_a_point_around_z_axis() {
+        let p = Point3::new(0.0, 1.0, 0.0);
+        let half_quarter = Transform::Rotate {
+            axis: Axis::Z,
+            angle: std::f64::consts::FRAC_PI_4,
+        };
+        let full_quarter = Transform::Rotate {
+            axis: Axis::Z,
+            angle: std::f64::consts::FRAC_PI_2,
+        };
+        let p2 = half_quarter.apply(p);
+        let p3 = full_quarter.apply(p);
+
+        assert_abs_diff_eq!(p2.x, -2f64.sqrt() / 2.0);
+        assert_abs_diff_eq!(p2.y, 2f64.sqrt() / 2.0);
+        assert_abs_diff_eq!(p2.z, 0.0);
+
+        assert_abs_diff_eq!(p3.x, -1.0);
+        assert_abs_diff_eq!(p3.y, 0.0);
+        assert_abs_diff_eq!(p3.z, 0.0);
+    }
+
+    #[test]
+    fn test_shearing_transformation_moves_x_in_proportion_to_y() {
+        let transform = Transform::Shear {
+            xy: 1.0,
+            xz: 0.0,
+            yx: 0.0,
+            yz: 0.0,
+            zx: 0.0,
+            zy: 0.0,
+        };
+        let p = Point3::new(2.0, 3.0, 4.0);
+        let p2 = transform.apply(p);
+        assert_eq!(p2, Point3::new(5.0, 3.0, 4.0));
+    }
+
+    #[test]
+    fn test_shearing_transformation_moves_x_in_proportion_to_z() {
+        let transform = Transform::Shear {
+            xy: 0.0,
+            xz: 1.0,
+            yx: 0.0,
+            yz: 0.0,
+            zx: 0.0,
+            zy: 0.0,
+        };
+        let p = Point3::new(2.0, 3.0, 4.0);
+        let p2 = transform.apply(p);
+        assert_eq!(p2, Point3::new(6.0, 3.0, 4.0));
+    }
+
+    #[test]
+    fn test_shearing_transformation_moves_y_in_proportion_to_x() {
+        let transform = Transform::Shear {
+            xy: 0.0,
+            xz: 0.0,
+            yx: 1.0,
+            yz: 0.0,
+            zx: 0.0,
+            zy: 0.0,
+        };
+        let p = Point3::new(2.0, 3.0, 4.0);
+        let p2 = transform.apply(p);
+        assert_eq!(p2, Point3::new(2.0, 5.0, 4.0));
+    }
+
+    #[test]
+    fn test_shearing_transformation_moves_y_in_proportion_to_z() {
+        let transform = Transform::Shear {
+            xy: 0.0,
+            xz: 0.0,
+            yx: 0.0,
+            yz: 1.0,
+            zx: 0.0,
+            zy: 0.0,
+        };
+        let p = Point3::new(2.0, 3.0, 4.0);
+        let p2 = transform.apply(p);
+        assert_eq!(p2, Point3::new(2.0, 7.0, 4.0));
+    }
+
+    #[test]
+    fn test_shearing_transformation_moves_z_in_proportion_to_x() {
+        let transform = Transform::Shear {
+            xy: 0.0,
+            xz: 0.0,
+            yx: 0.0,
+            yz: 0.0,
+            zx: 1.0,
+            zy: 0.0,
+        };
+        let p = Point3::new(2.0, 3.0, 4.0);
+        let p2 = transform.apply(p);
+        assert_eq!(p2, Point3::new(2.0, 3.0, 6.0));
+    }
+
+    #[test]
+    fn test_shearing_transformation_moves_z_in_proportion_to_y() {
+        let transform = Transform::Shear {
+            xy: 0.0,
+            xz: 0.0,
+            yx: 0.0,
+            yz: 0.0,
+            zx: 0.0,
+            zy: 1.0,
+        };
+        let p = Point3::new(2.0, 3.0, 4.0);
+        let p2 = transform.apply(p);
+        assert_eq!(p2, Point3::new(2.0, 3.0, 7.0));
+    }
+
+    #[test]
+    fn test_individual_transformations_are_applied_in_sequence() {
+        let p = Point3::new(1.0, 0.0, 1.0);
+        let a = Transform::Rotate {
+            axis: Axis::X,
+            angle: std::f64::consts::FRAC_PI_2,
+        };
+        let b = Transform::Scale(Scale3::new(5.0, 5.0, 5.0));
+        let c = Transform::Translate(Translation3::new(10.0, 5.0, 7.0));
+        let p2 = a.apply(p);
+        assert_abs_diff_eq!(p2.x, 1.0);
+        assert_abs_diff_eq!(p2.y, -1.0);
+        assert_abs_diff_eq!(p2.z, 0.0);
+
+        let p3 = b.apply(p2);
+        assert_abs_diff_eq!(p3.x, 5.0, epsilon = 1e-12);
+        assert_abs_diff_eq!(p3.y, -5.0, epsilon = 1e-12);
+        assert_abs_diff_eq!(p3.z, 0.0, epsilon = 1e-12);
+
+        let p4 = c.apply(p3);
+        assert_abs_diff_eq!(p4.x, 15.0);
+        assert_abs_diff_eq!(p4.y, 0.0);
+        assert_abs_diff_eq!(p4.z, 7.0);
+    }
+
+    #[test]
+    fn test_chained_transformations_must_be_applied_in_reverse_order() {
+        let p = Point3::new(1.0, 0.0, 1.0);
+        let a = Transform::Rotate {
+            axis: Axis::X,
+            angle: std::f64::consts::FRAC_PI_2,
+        };
+        let b = Transform::Scale(Scale3::new(5.0, 5.0, 5.0));
+        let c = Transform::Translate(Translation3::new(10.0, 5.0, 7.0));
+        let t = Transform::sequence(vec![c, b, a]);
+        let p2 = t.apply(p);
+        assert_abs_diff_eq!(p2.x, 15.0);
+        assert_abs_diff_eq!(p2.y, 0.0);
+        assert_abs_diff_eq!(p2.z, 7.0);
     }
 }
