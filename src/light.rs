@@ -2,7 +2,7 @@ use crate::canvas::Color;
 
 use nalgebra::{Point3, Vector3};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct PointLight {
     pub position: Point3<f64>,
     pub intensity: Color,
