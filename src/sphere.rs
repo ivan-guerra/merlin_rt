@@ -1,7 +1,10 @@
+use crate::canvas::Color;
+use crate::light::{Lighting, PointLight};
+use crate::material::Material;
 use crate::ray::{Intersectable, Intersection, Ray};
 use crate::transforms::{Transform, TransformError};
 
-use nalgebra::Point3;
+use nalgebra::{Point3, Vector3};
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -10,15 +13,17 @@ pub struct Sphere {
     pub radius: f64,
     pub center: Point3<f64>,
     pub transform: Transform,
+    pub material: Material,
 }
 
 impl Sphere {
-    pub fn new(radius: f64, center: Point3<f64>, transform: Transform) -> Self {
+    pub fn new(radius: f64, center: Point3<f64>, transform: Transform, material: Material) -> Self {
         Sphere {
             id: Uuid::new_v4(),
             radius,
             center,
             transform,
+            material,
         }
     }
 
@@ -40,6 +45,7 @@ impl Default for Sphere {
             radius: 1.0,
             center: Point3::new(0.0, 0.0, 0.0),
             transform: Transform::Identity,
+            material: Material::default(),
         }
     }
 }
@@ -65,6 +71,42 @@ impl Intersectable for Sphere {
             Intersection::new(t1, self.clone()),
             Intersection::new(t2, self.clone()),
         ])
+    }
+}
+
+impl Lighting for Sphere {
+    fn lighting(
+        &self,
+        light: PointLight,
+        point: Point3<f64>,
+        eyev: Vector3<f64>,
+        normalv: Vector3<f64>,
+    ) -> Color {
+        let black: Color = Color::new(0.0, 0.0, 0.0);
+        let effective_color = self.material.color * light.intensity;
+        let lightv = (light.position - point).normalize();
+        let ambient = effective_color * self.material.ambient;
+        let light_dot_normal = lightv.dot(&normalv);
+
+        let diffuse;
+        let specular;
+        if light_dot_normal < 0.0 {
+            diffuse = black;
+            specular = black;
+        } else {
+            diffuse = effective_color * self.material.diffuse * light_dot_normal;
+
+            let reflectv = Transform::Reflection(normalv).apply(-lightv);
+            let reflect_dot_eye = reflectv.dot(&eyev);
+
+            if reflect_dot_eye <= 0.0 {
+                specular = black;
+            } else {
+                let factor = reflect_dot_eye.powf(self.material.shininess);
+                specular = light.intensity * self.material.specular * factor;
+            }
+        }
+        ambient + diffuse + specular
     }
 }
 
@@ -322,5 +364,99 @@ mod test {
             .unwrap();
 
         assert_abs_diff_eq!(normal, Vector3::new(0.0, 0.97014, -0.24254), epsilon = 1e-5);
+    }
+
+    #[test]
+    fn test_sphere_has_a_default_material() {
+        let sphere = Sphere::default();
+        let default_material = Material::default();
+
+        assert_eq!(sphere.material.color, default_material.color);
+        assert_abs_diff_eq!(sphere.material.ambient, default_material.ambient);
+        assert_abs_diff_eq!(sphere.material.diffuse, default_material.diffuse);
+        assert_abs_diff_eq!(sphere.material.specular, default_material.specular);
+        assert_abs_diff_eq!(sphere.material.shininess, default_material.shininess);
+    }
+
+    #[test]
+    fn test_sphere_can_be_assigned_a_material() {
+        let mut sphere = Sphere::default();
+        let material = Material {
+            ambient: 1.0,
+            ..Default::default()
+        };
+        sphere.material = material;
+
+        assert_abs_diff_eq!(sphere.material.ambient, 1.0);
+    }
+
+    #[test]
+    fn test_lighting_with_eye_between_the_light_and_the_surface() {
+        let sphere = Sphere::default();
+        let position = Point3::new(0.0, 0.0, 0.0);
+        let eyev = Vector3::new(0.0, 0.0, -1.0);
+        let normalv = Vector3::new(0.0, 0.0, -1.0);
+        let light = PointLight::new(Point3::new(0.0, 0.0, -10.0), Color::new(1.0, 1.0, 1.0));
+        let result = sphere.lighting(light, position, eyev, normalv);
+
+        assert_abs_diff_eq!(result.r(), 1.9);
+        assert_abs_diff_eq!(result.g(), 1.9);
+        assert_abs_diff_eq!(result.b(), 1.9);
+    }
+
+    #[test]
+    fn test_lighting_with_eye_between_light_and_surface_eye_offset_45_degrees() {
+        let sphere = Sphere::default();
+        let position = Point3::new(0.0, 0.0, 0.0);
+        let eyev = Vector3::new(0.0, 2f64.sqrt() / 2.0, -2f64.sqrt() / 2.0);
+        let normalv = Vector3::new(0.0, 0.0, -1.0);
+        let light = PointLight::new(Point3::new(0.0, 0.0, -10.0), Color::new(1.0, 1.0, 1.0));
+        let result = sphere.lighting(light, position, eyev, normalv);
+
+        assert_abs_diff_eq!(result.r(), 1.0);
+        assert_abs_diff_eq!(result.g(), 1.0);
+        assert_abs_diff_eq!(result.b(), 1.0);
+    }
+
+    #[test]
+    fn test_lighting_with_eye_opposite_surface_light_offset_45_degrees() {
+        let sphere = Sphere::default();
+        let position = Point3::new(0.0, 0.0, 0.0);
+        let eyev = Vector3::new(0.0, 0.0, -1.0);
+        let normalv = Vector3::new(0.0, 0.0, -1.0);
+        let light = PointLight::new(Point3::new(0.0, 10.0, -10.0), Color::new(1.0, 1.0, 1.0));
+        let result = sphere.lighting(light, position, eyev, normalv);
+
+        assert_abs_diff_eq!(result.r(), 0.736396, epsilon = 1e-5);
+        assert_abs_diff_eq!(result.g(), 0.736396, epsilon = 1e-5);
+        assert_abs_diff_eq!(result.b(), 0.736396, epsilon = 1e-5);
+    }
+
+    #[test]
+    fn test_lighting_with_eye_in_path_of_reflection_vector() {
+        let sphere = Sphere::default();
+        let position = Point3::new(0.0, 0.0, 0.0);
+        let eyev = Vector3::new(0.0, -2f64.sqrt() / 2.0, -2f64.sqrt() / 2.0);
+        let normalv = Vector3::new(0.0, 0.0, -1.0);
+        let light = PointLight::new(Point3::new(0.0, 10.0, -10.0), Color::new(1.0, 1.0, 1.0));
+        let result = sphere.lighting(light, position, eyev, normalv);
+
+        assert_abs_diff_eq!(result.r(), 1.636396, epsilon = 1e-5);
+        assert_abs_diff_eq!(result.g(), 1.636396, epsilon = 1e-5);
+        assert_abs_diff_eq!(result.b(), 1.636396, epsilon = 1e-5);
+    }
+
+    #[test]
+    fn test_lighting_with_light_behind_surface() {
+        let sphere = Sphere::default();
+        let position = Point3::new(0.0, 0.0, 0.0);
+        let eyev = Vector3::new(0.0, 0.0, -1.0);
+        let normalv = Vector3::new(0.0, 0.0, -1.0);
+        let light = PointLight::new(Point3::new(0.0, 0.0, 10.0), Color::new(1.0, 1.0, 1.0));
+        let result = sphere.lighting(light, position, eyev, normalv);
+
+        assert_abs_diff_eq!(result.r(), 0.1);
+        assert_abs_diff_eq!(result.g(), 0.1);
+        assert_abs_diff_eq!(result.b(), 0.1);
     }
 }

@@ -1,4 +1,5 @@
 use merlin_rt::canvas::{Canvas, Color};
+use merlin_rt::material::Material;
 use merlin_rt::ray::{Intersectable, Intersection, Ray};
 use merlin_rt::sphere::Sphere;
 use merlin_rt::transforms::{Axis, Transform};
@@ -22,6 +23,7 @@ fn main() -> Result<()> {
                 angle: std::f64::consts::FRAC_PI_4,
             },
         ]),
+        Material::default(),
     );
     let wall_size = 7.0;
     let wall_z = 10.0;

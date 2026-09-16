@@ -1,7 +1,7 @@
 use nalgebra::Vector3;
 use std::fs::File;
 use std::io::Write;
-use std::ops::Mul;
+use std::ops::{Add, Mul};
 use std::path::Path;
 use thiserror::Error;
 
@@ -14,7 +14,7 @@ pub enum CanvasError {
     IoError(#[from] std::io::Error),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Color(Vector3<f64>);
 
 impl Color {
@@ -35,6 +35,18 @@ impl Color {
     }
 }
 
+impl Add<Color> for Color {
+    type Output = Color;
+
+    fn add(self, rhs: Color) -> Self::Output {
+        Color(Vector3::new(
+            self.r() + rhs.r(),
+            self.g() + rhs.g(),
+            self.b() + rhs.b(),
+        ))
+    }
+}
+
 impl Mul<Color> for Color {
     type Output = Color;
 
@@ -44,6 +56,22 @@ impl Mul<Color> for Color {
             self.g() * rhs.g(),
             self.b() * rhs.b(),
         ))
+    }
+}
+
+impl Mul<f64> for Color {
+    type Output = Color;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Color(Vector3::new(self.r() * rhs, self.g() * rhs, self.b() * rhs))
+    }
+}
+
+impl Mul<Color> for f64 {
+    type Output = Color;
+
+    fn mul(self, rhs: Color) -> Self::Output {
+        Color(Vector3::new(self * rhs.r(), self * rhs.g(), self * rhs.b()))
     }
 }
 
