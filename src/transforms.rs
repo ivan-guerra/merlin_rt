@@ -121,7 +121,6 @@ impl Transformable for Point3<f64> {
             ),
             Transform::Sequence(transforms) => transforms
                 .iter()
-                .rev()
                 .fold(self, |point, transform| transform.apply(point)),
             Transform::Identity => self,
         }
@@ -157,7 +156,6 @@ impl Transformable for Vector3<f64> {
             ),
             Transform::Sequence(transforms) => transforms
                 .iter()
-                .rev()
                 .fold(self, |vector, transform| transform.apply(vector)),
             Transform::Identity => self,
         }
@@ -436,7 +434,7 @@ mod tests {
         };
         let b = Transform::Scale(Scale3::new(5.0, 5.0, 5.0));
         let c = Transform::Translate(Translation3::new(10.0, 5.0, 7.0));
-        let t = Transform::sequence(vec![c, b, a]);
+        let t = Transform::sequence(vec![a, b, c]);
         let p2 = t.apply(p);
         assert_abs_diff_eq!(p2.x, 15.0);
         assert_abs_diff_eq!(p2.y, 0.0);
