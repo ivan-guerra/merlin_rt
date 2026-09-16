@@ -21,6 +21,16 @@ impl Sphere {
             transform,
         }
     }
+
+    pub fn normal_at(
+        &self,
+        world_point: Point3<f64>,
+    ) -> Result<nalgebra::Vector3<f64>, TransformError> {
+        let object_point = self.transform.apply_inverse(world_point)?;
+        let object_normal = object_point - self.center;
+        let world_normal = self.transform.apply_transpose_inverse(object_normal)?;
+        Ok(world_normal.normalize())
+    }
 }
 
 impl Default for Sphere {
@@ -227,5 +237,90 @@ mod test {
         let intersections = sphere.intersect(&ray).unwrap();
 
         assert!(intersections.is_empty());
+    }
+
+    #[test]
+    fn test_normal_on_sphere_at_point_on_x_axis() {
+        let sphere = Sphere::default();
+        let normal = sphere.normal_at(Point3::new(1.0, 0.0, 0.0)).unwrap();
+
+        assert_abs_diff_eq!(normal, Vector3::new(1.0, 0.0, 0.0));
+    }
+
+    #[test]
+    fn test_normal_on_sphere_at_point_on_y_axis() {
+        let sphere = Sphere::default();
+        let normal = sphere.normal_at(Point3::new(0.0, 1.0, 0.0)).unwrap();
+
+        assert_abs_diff_eq!(normal, Vector3::new(0.0, 1.0, 0.0));
+    }
+
+    #[test]
+    fn test_normal_on_sphere_at_point_on_z_axis() {
+        let sphere = Sphere::default();
+        let normal = sphere.normal_at(Point3::new(0.0, 0.0, 1.0)).unwrap();
+
+        assert_abs_diff_eq!(normal, Vector3::new(0.0, 0.0, 1.0));
+    }
+
+    #[test]
+    fn test_normal_on_sphere_at_nonaxial_point() {
+        let sqrt_3_over_3: f64 = 3_f64.sqrt() / 3.0;
+        let sphere = Sphere::default();
+        let normal = sphere
+            .normal_at(Point3::new(sqrt_3_over_3, sqrt_3_over_3, sqrt_3_over_3))
+            .unwrap();
+
+        assert_abs_diff_eq!(
+            normal,
+            Vector3::new(sqrt_3_over_3, sqrt_3_over_3, sqrt_3_over_3)
+        );
+    }
+
+    #[test]
+    fn test_normal_is_normalized_vector() {
+        let sqrt_3_over_3: f64 = 3_f64.sqrt() / 3.0;
+        let sphere = Sphere::default();
+        let normal = sphere
+            .normal_at(Point3::new(sqrt_3_over_3, sqrt_3_over_3, sqrt_3_over_3))
+            .unwrap();
+
+        assert_abs_diff_eq!(normal, normal.normalize());
+    }
+
+    #[test]
+    fn test_computing_normal_on_translated_sphere() {
+        let sphere = Sphere {
+            transform: Transform::Translate(Translation3::new(0.0, 1.0, 0.0)),
+            ..Default::default()
+        };
+        let normal = sphere
+            .normal_at(Point3::new(0.0, 1.70711, -std::f64::consts::FRAC_1_SQRT_2))
+            .unwrap();
+
+        assert_abs_diff_eq!(
+            normal,
+            Vector3::new(0.0, 0.707117, -std::f64::consts::FRAC_1_SQRT_2),
+            epsilon = 1e-5
+        );
+    }
+
+    #[test]
+    fn test_computing_normal_on_transformed_sphere() {
+        let sphere = Sphere {
+            transform: Transform::sequence([
+                Transform::Rotate {
+                    axis: crate::transforms::Axis::Z,
+                    angle: std::f64::consts::PI / 5.0,
+                },
+                Transform::Scale(Scale3::new(1.0, 0.5, 1.0)),
+            ]),
+            ..Default::default()
+        };
+        let normal = sphere
+            .normal_at(Point3::new(0.0, 2f64.sqrt() / 2.0, -2f64.sqrt() / 2.0))
+            .unwrap();
+
+        assert_abs_diff_eq!(normal, Vector3::new(0.0, 0.97014, -0.24254), epsilon = 1e-5);
     }
 }
