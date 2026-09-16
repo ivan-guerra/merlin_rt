@@ -78,7 +78,7 @@ mod tests {
     #[test]
     fn test_translating_a_ray() {
         let ray = Ray::new(Point3::new(1.0, 2.0, 3.0), Vector3::new(0.0, 1.0, 0.0));
-        let transform = Transform::Translate(Translation3::new(3.0, 4.0, 5.0));
+        let transform = Transform::translation(Translation3::new(3.0, 4.0, 5.0));
         let transformed_ray = ray.transform(&transform);
 
         assert_eq!(transformed_ray.origin, Point3::new(4.0, 6.0, 8.0));
@@ -88,7 +88,7 @@ mod tests {
     #[test]
     fn test_scaling_a_ray() {
         let ray = Ray::new(Point3::new(1.0, 2.0, 3.0), Vector3::new(0.0, 1.0, 0.0));
-        let transform = Transform::Scale(Scale3::new(2.0, 3.0, 4.0));
+        let transform = Transform::scale(Scale3::new(2.0, 3.0, 4.0));
         let transformed_ray = ray.transform(&transform);
 
         assert_eq!(transformed_ray.origin, Point3::new(2.0, 6.0, 12.0));
@@ -98,10 +98,7 @@ mod tests {
     #[test]
     fn test_rotating_a_ray() {
         let ray = Ray::new(Point3::new(0.0, 1.0, 0.0), Vector3::new(0.0, 1.0, 0.0));
-        let transform = Transform::Rotate {
-            axis: Axis::X,
-            angle: std::f64::consts::FRAC_PI_2,
-        };
+        let transform = Transform::rotation(Axis::X, std::f64::consts::FRAC_PI_2);
         let transformed_ray = ray.transform(&transform);
 
         assert_abs_diff_eq!(transformed_ray.origin.x, 0.0);

@@ -20,11 +20,8 @@ fn main() -> Result<()> {
         1.0,
         Point3::origin(),
         Transform::sequence([
-            Transform::Scale(Scale3::new(0.5, 1.0, 1.0)),
-            Transform::Rotate {
-                axis: Axis::Z,
-                angle: std::f64::consts::FRAC_PI_4,
-            },
+            Transform::scale(Scale3::new(0.5, 1.0, 1.0)),
+            Transform::rotation(Axis::Z, std::f64::consts::FRAC_PI_4),
         ]),
         Material::default(),
     );

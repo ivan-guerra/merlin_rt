@@ -20,7 +20,7 @@ fn main() -> Result<()> {
     let sphere = Sphere::new(
         1.0,
         Point3::origin(),
-        Transform::Identity,
+        Transform::identity(),
         Material {
             color: Color::new(1.0, 0.2, 1.0),
             ..Default::default()

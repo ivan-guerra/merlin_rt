@@ -7,7 +7,7 @@ use crate::transforms::{Transform, TransformError};
 use nalgebra::{Point3, Vector3};
 use uuid::Uuid;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Sphere {
     pub id: Uuid,
     pub radius: f64,
@@ -44,7 +44,7 @@ impl Default for Sphere {
             id: Uuid::new_v4(),
             radius: 1.0,
             center: Point3::new(0.0, 0.0, 0.0),
-            transform: Transform::Identity,
+            transform: Transform::identity(),
             material: Material::default(),
         }
     }
@@ -68,8 +68,8 @@ impl Intersectable for Sphere {
         let t1 = (-b - discriminant.sqrt()) / (2.0 * a);
         let t2 = (-b + discriminant.sqrt()) / (2.0 * a);
         Ok(vec![
-            Intersection::new(t1, self.clone()),
-            Intersection::new(t2, self.clone()),
+            Intersection::new(t1, *self),
+            Intersection::new(t2, *self),
         ])
     }
 }
@@ -96,7 +96,7 @@ impl Lighting for Sphere {
         } else {
             diffuse = effective_color * self.material.diffuse * light_dot_normal;
 
-            let reflectv = Transform::Reflection(normalv).apply(-lightv);
+            let reflectv = Transform::reflection(normalv).apply(-lightv);
             let reflect_dot_eye = reflectv.dot(&eyev);
 
             if reflect_dot_eye <= 0.0 {
@@ -172,7 +172,7 @@ mod test {
     #[test]
     fn test_intersection_encapsulates_t_and_object() {
         let sphere = Sphere::default();
-        let intersection = Intersection::new(3.5, sphere.clone());
+        let intersection = Intersection::new(3.5, sphere);
 
         assert_abs_diff_eq!(intersection.t, 3.5);
         assert_eq!(intersection.object.id, sphere.id);
@@ -192,8 +192,8 @@ mod test {
     #[test]
     fn test_hit_when_all_intersections_have_positive_t() {
         let sphere = Sphere::default();
-        let i1 = Intersection::new(1.0, sphere.clone());
-        let i2 = Intersection::new(2.0, sphere.clone());
+        let i1 = Intersection::new(1.0, sphere);
+        let i2 = Intersection::new(2.0, sphere);
         let mut intersections = vec![i1, i2];
 
         let hit = Intersection::hit(&mut intersections).unwrap();
@@ -203,8 +203,8 @@ mod test {
     #[test]
     fn test_hit_when_some_intersections_have_negative_t() {
         let sphere = Sphere::default();
-        let i1 = Intersection::new(-1.0, sphere.clone());
-        let i2 = Intersection::new(1.0, sphere.clone());
+        let i1 = Intersection::new(-1.0, sphere);
+        let i2 = Intersection::new(1.0, sphere);
         let mut intersections = vec![i1, i2];
 
         let hit = Intersection::hit(&mut intersections).unwrap();
@@ -214,8 +214,8 @@ mod test {
     #[test]
     fn test_hit_when_all_intersections_have_negative_t() {
         let sphere = Sphere::default();
-        let i1 = Intersection::new(-2.0, sphere.clone());
-        let i2 = Intersection::new(-1.0, sphere.clone());
+        let i1 = Intersection::new(-2.0, sphere);
+        let i2 = Intersection::new(-1.0, sphere);
         let mut intersections = vec![i1, i2];
 
         let hit = Intersection::hit(&mut intersections);
@@ -225,10 +225,10 @@ mod test {
     #[test]
     fn test_hit_is_lowest_nonnegative_intersection() {
         let sphere = Sphere::default();
-        let i1 = Intersection::new(5.0, sphere.clone());
-        let i2 = Intersection::new(7.0, sphere.clone());
-        let i3 = Intersection::new(-3.0, sphere.clone());
-        let i4 = Intersection::new(2.0, sphere.clone());
+        let i1 = Intersection::new(5.0, sphere);
+        let i2 = Intersection::new(7.0, sphere);
+        let i3 = Intersection::new(-3.0, sphere);
+        let i4 = Intersection::new(2.0, sphere);
         let mut intersections = vec![i1, i2, i3, i4];
 
         let hit = Intersection::hit(&mut intersections).unwrap();
@@ -239,19 +239,19 @@ mod test {
     fn test_sphere_default_transformation() {
         let sphere = Sphere::default();
 
-        assert_eq!(sphere.transform, Transform::Identity);
+        assert_eq!(sphere.transform, Transform::identity());
     }
 
     #[test]
     fn test_changing_sphere_transformation() {
         let sphere = Sphere {
-            transform: Transform::Translate(Translation3::new(2.0, 3.0, 4.0)),
+            transform: Transform::translation(Translation3::new(2.0, 3.0, 4.0)),
             ..Default::default()
         };
 
         assert_eq!(
             sphere.transform,
-            Transform::Translate(Translation3::new(2.0, 3.0, 4.0))
+            Transform::translation(Translation3::new(2.0, 3.0, 4.0))
         );
     }
 
@@ -259,7 +259,7 @@ mod test {
     fn test_intersecting_scaled_sphere_with_ray() {
         let ray = Ray::new(Point3::new(0.0, 0.0, -5.0), Vector3::new(0.0, 0.0, 1.0));
         let sphere = Sphere {
-            transform: Transform::Scale(Scale3::new(2.0, 2.0, 2.0)),
+            transform: Transform::scale(Scale3::new(2.0, 2.0, 2.0)),
             ..Default::default()
         };
         let intersections = sphere.intersect(&ray).unwrap();
@@ -273,7 +273,7 @@ mod test {
     fn test_intersecting_translated_sphere_with_ray() {
         let ray = Ray::new(Point3::new(0.0, 0.0, -5.0), Vector3::new(0.0, 0.0, 1.0));
         let sphere = Sphere {
-            transform: Transform::Translate(Translation3::new(5.0, 0.0, 0.0)),
+            transform: Transform::translation(Translation3::new(5.0, 0.0, 0.0)),
             ..Default::default()
         };
         let intersections = sphere.intersect(&ray).unwrap();
@@ -333,7 +333,7 @@ mod test {
     #[test]
     fn test_computing_normal_on_translated_sphere() {
         let sphere = Sphere {
-            transform: Transform::Translate(Translation3::new(0.0, 1.0, 0.0)),
+            transform: Transform::translation(Translation3::new(0.0, 1.0, 0.0)),
             ..Default::default()
         };
         let normal = sphere
@@ -351,11 +351,8 @@ mod test {
     fn test_computing_normal_on_transformed_sphere() {
         let sphere = Sphere {
             transform: Transform::sequence([
-                Transform::Rotate {
-                    axis: crate::transforms::Axis::Z,
-                    angle: std::f64::consts::PI / 5.0,
-                },
-                Transform::Scale(Scale3::new(1.0, 0.5, 1.0)),
+                Transform::rotation(crate::transforms::Axis::Z, std::f64::consts::PI / 5.0),
+                Transform::scale(Scale3::new(1.0, 0.5, 1.0)),
             ]),
             ..Default::default()
         };
