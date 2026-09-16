@@ -18,6 +18,7 @@ pub enum Axis {
 pub enum Transform {
     Translate(Translation3<f64>),
     Scale(Scale3<f64>),
+    Reflection(Vector3<f64>),
     Rotate {
         axis: Axis,
         angle: f64,
@@ -67,6 +68,9 @@ impl Transform {
         match self {
             Self::Translate(translation) => translation.to_homogeneous(),
             Self::Scale(scale) => scale.to_homogeneous(),
+            Self::Reflection(reflection) => {
+                Translation3::new(reflection.x, reflection.y, reflection.z).to_homogeneous()
+            }
             Self::Rotate { axis, angle } => match axis {
                 Axis::X => Rotation3::from_axis_angle(&Vector3::x_axis(), *angle).to_homogeneous(),
                 Axis::Y => Rotation3::from_axis_angle(&Vector3::y_axis(), *angle).to_homogeneous(),
@@ -102,6 +106,7 @@ impl Transformable for Point3<f64> {
         match transform {
             Transform::Translate(translation) => translation * self,
             Transform::Scale(scale) => scale * self,
+            Transform::Reflection(_reflection) => todo!("Need to implement reflection for Point3"),
             Transform::Rotate { axis, angle } => match axis {
                 Axis::X => Rotation3::from_axis_angle(&Vector3::x_axis(), *angle) * self,
                 Axis::Y => Rotation3::from_axis_angle(&Vector3::y_axis(), *angle) * self,
@@ -137,6 +142,7 @@ impl Transformable for Vector3<f64> {
         match transform {
             Transform::Translate(_) => self,
             Transform::Scale(scale) => scale * self,
+            Transform::Reflection(reflection) => self - reflection * 2.0 * self.dot(reflection),
             Transform::Rotate { axis, angle } => match axis {
                 Axis::X => Rotation3::from_axis_angle(&Vector3::x_axis(), *angle) * self,
                 Axis::Y => Rotation3::from_axis_angle(&Vector3::y_axis(), *angle) * self,
@@ -439,5 +445,25 @@ mod tests {
         assert_abs_diff_eq!(p2.x, 15.0);
         assert_abs_diff_eq!(p2.y, 0.0);
         assert_abs_diff_eq!(p2.z, 7.0);
+    }
+
+    #[test]
+    fn test_reflecting_a_vector_approaching_at_45_degrees() {
+        let v = Vector3::new(1.0, -1.0, 0.0);
+        let n = Vector3::new(0.0, 1.0, 0.0);
+        let r = v.apply_transform(&Transform::Reflection(n));
+        assert_abs_diff_eq!(r.x, 1.0);
+        assert_abs_diff_eq!(r.y, 1.0);
+        assert_abs_diff_eq!(r.z, 0.0);
+    }
+
+    #[test]
+    fn test_reflecting_a_vector_off_a_slanted_surface() {
+        let v = Vector3::new(0.0, -1.0, 0.0);
+        let n = Vector3::new(2f64.sqrt() / 2.0, 2f64.sqrt() / 2.0, 0.0);
+        let r = v.apply_transform(&Transform::Reflection(n));
+        assert_abs_diff_eq!(r.x, 1.0);
+        assert_abs_diff_eq!(r.y, 0.0);
+        assert_abs_diff_eq!(r.z, 0.0);
     }
 }
