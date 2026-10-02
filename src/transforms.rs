@@ -20,10 +20,18 @@ pub struct Transform {
 }
 
 impl Transform {
+    pub fn matrix(&self) -> &Matrix4<f64> {
+        &self.matrix
+    }
+
     pub fn identity() -> Self {
         Self {
             matrix: Matrix4::identity(),
         }
+    }
+
+    pub fn from_matrix(matrix: Matrix4<f64>) -> Self {
+        Self { matrix }
     }
 
     pub fn translation(translation: Translation3<f64>) -> Self {

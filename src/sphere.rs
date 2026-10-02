@@ -7,7 +7,7 @@ use crate::transforms::{Transform, TransformError};
 use nalgebra::{Point3, Vector3};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Sphere {
     pub id: Uuid,
     pub radius: f64,

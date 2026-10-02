@@ -1,3 +1,4 @@
+use approx::abs_diff_eq;
 use nalgebra::Vector3;
 use std::fs::File;
 use std::io::Write;
@@ -14,7 +15,7 @@ pub enum CanvasError {
     IoError(#[from] std::io::Error),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 pub struct Color(Vector3<f64>);
 
 impl Color {
@@ -32,6 +33,14 @@ impl Color {
 
     pub fn b(&self) -> f64 {
         self.0.z
+    }
+}
+
+impl PartialEq for Color {
+    fn eq(&self, other: &Self) -> bool {
+        abs_diff_eq!(self.r(), other.r(), epsilon = 1e-5)
+            && abs_diff_eq!(self.g(), other.g(), epsilon = 1e-5)
+            && abs_diff_eq!(self.b(), other.b(), epsilon = 1e-5)
     }
 }
 
