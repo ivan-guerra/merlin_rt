@@ -1,4 +1,4 @@
-use crate::transforms::{Transform, TransformError};
+use crate::transforms::Transform;
 
 use nalgebra::{Point3, Vector3};
 
@@ -22,29 +22,6 @@ impl Ray {
             origin: transform.apply(self.origin),
             direction: transform.apply(self.direction),
         }
-    }
-}
-
-pub trait Intersectable: Clone {
-    fn intersect(&self, ray: &Ray) -> Result<Vec<Intersection<Self>>, TransformError>;
-}
-
-#[derive(Debug)]
-pub struct Intersection<T: Intersectable> {
-    pub t: f64,
-    pub object: T,
-}
-
-impl<T: Intersectable> Intersection<T> {
-    pub fn new(t: f64, object: T) -> Self {
-        Self { t, object }
-    }
-
-    pub fn hit(intersections: &mut [Intersection<T>]) -> Option<&Intersection<T>> {
-        intersections.sort_by(|a, b| a.t.total_cmp(&b.t));
-        intersections
-            .iter()
-            .find(|intersection| intersection.t >= 0.0)
     }
 }
 

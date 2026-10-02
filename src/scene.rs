@@ -2,7 +2,8 @@ use crate::{
     canvas::Color,
     light::{Lighting, PointLight},
     material::Material,
-    ray::{Intersectable, Intersection, Ray},
+    ray::Ray,
+    shape::{Intersection, Shape},
     sphere::Sphere,
     transforms::{Transform, TransformError},
 };

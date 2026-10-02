@@ -1,7 +1,9 @@
 use crate::canvas::Color;
 use crate::light::{Lighting, PointLight};
 use crate::material::Material;
-use crate::ray::{Intersectable, Intersection, Ray};
+use crate::ray::Ray;
+use crate::shape::Intersection;
+use crate::shape::Shape;
 use crate::transforms::{Transform, TransformError};
 
 use nalgebra::{Point3, Vector3};
@@ -26,16 +28,6 @@ impl Sphere {
             material,
         }
     }
-
-    pub fn normal_at(
-        &self,
-        world_point: Point3<f64>,
-    ) -> Result<nalgebra::Vector3<f64>, TransformError> {
-        let object_point = self.transform.apply_inverse(world_point)?;
-        let object_normal = object_point - self.center;
-        let world_normal = self.transform.apply_transpose_inverse(object_normal)?;
-        Ok(world_normal.normalize())
-    }
 }
 
 impl Default for Sphere {
@@ -50,15 +42,19 @@ impl Default for Sphere {
     }
 }
 
-impl Intersectable for Sphere {
+impl Shape for Sphere {
+    fn transform(&self) -> Transform {
+        self.transform
+    }
+
     fn intersect(&self, ray: &Ray) -> Result<Vec<Intersection<Self>>, TransformError> {
-        let ray2 = Ray::new(
-            self.transform.apply_inverse(ray.origin)?,
-            self.transform.apply_inverse(ray.direction)?,
+        let ray = Ray::new(
+            self.transform().apply_inverse(ray.origin)?,
+            self.transform().apply_inverse(ray.direction)?,
         );
-        let sphere_to_ray = ray2.origin - self.center;
-        let a = ray2.direction.dot(&ray2.direction);
-        let b = 2.0 * ray2.direction.dot(&sphere_to_ray);
+        let sphere_to_ray = ray.origin - self.center;
+        let a = ray.direction.dot(&ray.direction);
+        let b = 2.0 * ray.direction.dot(&sphere_to_ray);
         let c = sphere_to_ray.dot(&sphere_to_ray) - 1.0;
         let discriminant = b * b - 4.0 * a * c;
 
@@ -71,6 +67,13 @@ impl Intersectable for Sphere {
             Intersection::new(t1, *self),
             Intersection::new(t2, *self),
         ])
+    }
+
+    fn normal_at(&self, world_point: Point3<f64>) -> Result<Vector3<f64>, TransformError> {
+        let object_point = self.transform.apply_inverse(world_point)?;
+        let object_normal = object_point - self.center;
+        let world_normal = self.transform.apply_transpose_inverse(object_normal)?;
+        Ok(world_normal.normalize())
     }
 }
 
