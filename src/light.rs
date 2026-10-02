@@ -24,6 +24,7 @@ pub trait Lighting {
         point: Point3<f64>,
         eyev: Vector3<f64>,
         normalv: Vector3<f64>,
+        in_shadow: bool,
     ) -> Color;
 }
 

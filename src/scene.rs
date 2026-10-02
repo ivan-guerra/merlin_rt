@@ -36,6 +36,7 @@ impl World {
     pub fn new(light: PointLight, objects: Vec<Sphere>) -> Self {
         World { light, objects }
     }
+
     pub fn intersect(&self, ray: &Ray) -> Vec<Intersection<Sphere>> {
         let mut intersections = Vec::new();
         for object in &self.objects {
@@ -48,9 +49,10 @@ impl World {
     }
 
     pub fn shade_hit(&self, comps: &Computations) -> Color {
+        let shadowed = self.is_shadowed(comps.over_point);
         comps
             .object
-            .lighting(self.light, comps.point, comps.eyev, comps.normalv)
+            .lighting(self.light, comps.point, comps.eyev, comps.normalv, shadowed)
     }
 
     pub fn color_at(&self, ray: &Ray) -> Color {
@@ -60,6 +62,21 @@ impl World {
             self.shade_hit(&comps)
         } else {
             Color::new(0.0, 0.0, 0.0)
+        }
+    }
+
+    pub fn is_shadowed(&self, point: Point3<f64>) -> bool {
+        let v = self.light.position - point;
+        let distance = v.magnitude();
+        let direction = v.normalize();
+
+        let r = Ray::new(point, direction);
+        let mut intersections = self.intersect(&r);
+
+        if let Some(hit) = Intersection::hit(&mut intersections) {
+            hit.t < distance
+        } else {
+            false
         }
     }
 }
@@ -97,6 +114,7 @@ pub struct Computations {
     pub t: f64,
     pub object: Sphere,
     pub point: Point3<f64>,
+    pub over_point: Point3<f64>,
     pub eyev: Vector3<f64>,
     pub normalv: Vector3<f64>,
     pub inside: bool,
@@ -116,11 +134,14 @@ impl Computations {
         if inside {
             normalv = -normalv;
         }
+        const EPSILON: f64 = 1e-5;
+        let over_point = point + normalv * EPSILON;
 
         Ok(Computations {
             t,
             object,
             point,
+            over_point,
             eyev,
             normalv,
             inside,
@@ -303,5 +324,70 @@ mod tests {
         );
 
         assert_abs_diff_eq!(*t.matrix(), expected, epsilon = 1e-5);
+    }
+
+    #[test]
+    fn test_there_is_no_shadow_when_nothing_is_collinear_with_point_and_light() {
+        let world = World::default();
+        let point = Point3::new(0.0, 10.0, 0.0);
+
+        assert!(!world.is_shadowed(point));
+    }
+
+    #[test]
+    fn test_the_shadow_when_an_object_is_between_the_point_and_the_light() {
+        let world = World::default();
+        let point = Point3::new(10.0, -10.0, 10.0);
+
+        assert!(world.is_shadowed(point));
+    }
+
+    #[test]
+    fn test_there_is_no_shadow_when_an_object_is_behind_the_light() {
+        let world = World::default();
+        let point = Point3::new(-20.0, 20.0, -20.0);
+
+        assert!(!world.is_shadowed(point));
+    }
+
+    #[test]
+    fn test_there_is_no_shadow_when_an_object_is_behind_the_point() {
+        let world = World::default();
+        let point = Point3::new(-2.0, 2.0, -2.0);
+
+        assert!(!world.is_shadowed(point));
+    }
+
+    #[test]
+    fn test_shade_hit_is_given_an_intersection_in_shadow() {
+        let mut world = World::default();
+        let light = PointLight::new(
+            Point3::new(0.0, 0.0, -10.0),
+            crate::canvas::Color::new(1.0, 1.0, 1.0),
+        );
+        world.light = light;
+        let sphere2 = world.objects[1];
+        let ray = Ray::new(Point3::new(0.0, 0.0, 5.0), Vector3::new(0.0, 0.0, 1.0));
+        let intersection = Intersection::new(4.0, sphere2);
+        let comps = Computations::prepare_computations(&intersection, &ray).unwrap();
+        let color = world.shade_hit(&comps);
+
+        assert_eq!(color, Color::new(0.1, 0.1, 0.1));
+    }
+
+    #[test]
+    fn test_the_hit_should_offset_the_point() {
+        let mut world = World::default();
+        let ray = Ray::new(Point3::new(0.0, 0.0, -5.0), Vector3::new(0.0, 0.0, 1.0));
+        let sphere = Sphere {
+            transform: Transform::translation(Translation3::new(0.0, 0.0, 1.0)),
+            ..Default::default()
+        };
+        world.objects[0] = sphere;
+        let intersection = Intersection::new(5.0, world.objects[0]);
+        let comps = Computations::prepare_computations(&intersection, &ray).unwrap();
+
+        assert!(comps.over_point.z < -f64::EPSILON / 2.0);
+        assert!(comps.point.z > comps.over_point.z);
     }
 }

@@ -47,7 +47,7 @@ fn main() -> Result<()> {
 
             let point = ray.position(hit.t);
             let normal = hit.object.normal_at(point)?;
-            let color = hit.object.lighting(light, point, -direction, normal);
+            let color = hit.object.lighting(light, point, -direction, normal, false);
             canvas.write_pixel(x, y, color)?;
         }
     }
@@ -55,4 +55,3 @@ fn main() -> Result<()> {
     canvas.write_to_ppm(Path::new("sphere.ppm"))?;
     Ok(())
 }
-
