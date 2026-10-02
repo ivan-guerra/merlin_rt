@@ -1,6 +1,6 @@
 use crate::{
     canvas::Color,
-    light::{Lighting, PointLight},
+    light::{PointLight},
     material::Material,
     ray::Ray,
     shape::{Intersection, Shape},
@@ -13,7 +13,7 @@ use nalgebra::{Matrix4, Point3, Scale3, Translation3, Vector3};
 #[derive(Debug)]
 pub struct World {
     light: PointLight,
-    objects: Vec<Sphere>,
+    objects: Vec<Box<dyn Shape>>,
 }
 
 impl World {
@@ -34,17 +34,19 @@ impl World {
         ])
     }
 
-    pub fn new(light: PointLight, objects: Vec<Sphere>) -> Self {
+    pub fn new(light: PointLight, objects: Vec<Box<dyn Shape>>) -> Self {
         World { light, objects }
     }
 
-    pub fn intersect(&self, ray: &Ray) -> Vec<Intersection<Sphere>> {
+    pub fn intersect<'a>(&'a self, ray: &Ray) -> Vec<Intersection<'a>> {
         let mut intersections = Vec::new();
+
         for object in &self.objects {
             if let Ok(mut object_intersections) = object.intersect(ray) {
                 intersections.append(&mut object_intersections);
             }
         }
+
         intersections.sort_by(|a, b| a.t.total_cmp(&b.t));
         intersections
     }
@@ -105,15 +107,15 @@ impl Default for World {
 
         World {
             light,
-            objects: vec![sphere1, sphere2],
+            objects: vec![Box::new(sphere1), Box::new(sphere2)],
         }
     }
 }
 
 #[derive(Debug)]
-pub struct Computations {
+pub struct Computations<'a> {
     pub t: f64,
-    pub object: Sphere,
+    pub object: &'a dyn Shape,
     pub point: Point3<f64>,
     pub over_point: Point3<f64>,
     pub eyev: Vector3<f64>,
@@ -121,20 +123,22 @@ pub struct Computations {
     pub inside: bool,
 }
 
-impl Computations {
-    pub fn prepare_computations(
-        intersection: &Intersection<Sphere>,
+impl Computations<'_> {
+    pub fn prepare_computations<'a>(
+        intersection: &Intersection<'a>,
         ray: &Ray,
-    ) -> Result<Computations, TransformError> {
+    ) -> Result<Computations<'a>, TransformError> {
         let t = intersection.t;
         let object = intersection.object;
         let point = ray.position(t);
         let eyev = -ray.direction;
         let mut normalv = object.normal_at(point)?;
         let inside = normalv.dot(&eyev) < 0.0;
+
         if inside {
             normalv = -normalv;
         }
+
         const EPSILON: f64 = 1e-5;
         let over_point = point + normalv * EPSILON;
 
@@ -185,11 +189,11 @@ mod tests {
     fn test_precomputing_the_state_of_an_intersection() {
         let ray = Ray::new(Point3::new(0.0, 0.0, -5.0), Vector3::new(0.0, 0.0, 1.0));
         let sphere = Sphere::default();
-        let intersection = Intersection::new(4.0, sphere);
+        let intersection = Intersection::new(4.0, &sphere);
         let comps = Computations::prepare_computations(&intersection, &ray).unwrap();
 
         assert_abs_diff_eq!(comps.t, intersection.t);
-        assert_eq!(comps.object, intersection.object);
+        assert!(std::ptr::eq(comps.object, intersection.object));
         assert_abs_diff_eq!(comps.point, Point3::new(0.0, 0.0, -1.0));
         assert_abs_diff_eq!(comps.eyev, Vector3::new(0.0, 0.0, -1.0));
         assert_abs_diff_eq!(comps.normalv, Vector3::new(0.0, 0.0, -1.0));
@@ -199,7 +203,7 @@ mod tests {
     fn test_the_hit_when_an_intersection_occurs_on_the_outside() {
         let ray = Ray::new(Point3::new(0.0, 0.0, -5.0), Vector3::new(0.0, 0.0, 1.0));
         let sphere = Sphere::default();
-        let intersection = Intersection::new(4.0, sphere);
+        let intersection = Intersection::new(4.0, &sphere);
         let comps = Computations::prepare_computations(&intersection, &ray).unwrap();
 
         assert!(!comps.inside);
@@ -209,7 +213,7 @@ mod tests {
     fn test_the_hit_when_an_intersection_occurs_on_the_inside() {
         let ray = Ray::new(Point3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 1.0));
         let sphere = Sphere::default();
-        let intersection = Intersection::new(1.0, sphere);
+        let intersection = Intersection::new(1.0, &sphere);
         let comps = Computations::prepare_computations(&intersection, &ray).unwrap();
 
         assert_abs_diff_eq!(comps.point, Point3::new(0.0, 0.0, 1.0));
@@ -222,7 +226,7 @@ mod tests {
     fn test_shading_an_intersection() {
         let world = World::default();
         let ray = Ray::new(Point3::new(0.0, 0.0, -5.0), Vector3::new(0.0, 0.0, 1.0));
-        let sphere = world.objects[0];
+        let sphere = world.objects[0].as_ref();
         let intersection = Intersection::new(4.0, sphere);
         let comps = Computations::prepare_computations(&intersection, &ray).unwrap();
         let color = world.shade_hit(&comps);
@@ -240,7 +244,7 @@ mod tests {
             ..Default::default()
         };
         let ray = Ray::new(Point3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 1.0));
-        let sphere = world.objects[1];
+        let sphere = world.objects[1].as_ref();
         let intersection = Intersection::new(0.5, sphere);
         let comps = Computations::prepare_computations(&intersection, &ray).unwrap();
         let color = world.shade_hit(&comps);
@@ -269,17 +273,14 @@ mod tests {
     #[test]
     fn test_color_with_an_intersection_behind_the_ray() {
         let mut world = World::default();
-        let mut outer = world.objects[0];
-        let mut inner = world.objects[1];
-        outer.material.ambient = 1.0;
-        inner.material.ambient = 1.0;
-        world.objects[0] = outer;
-        world.objects[1] = inner;
+        world.objects[0].material_mut().ambient = 1.0;
+        world.objects[1].material_mut().ambient = 1.0;
+        let expected_color = world.objects[1].material().color;
 
         let ray = Ray::new(Point3::new(0.0, 0.0, 0.75), Vector3::new(0.0, 0.0, -1.0));
         let color = world.color_at(&ray);
 
-        assert_eq!(color, inner.material.color);
+        assert_eq!(color, expected_color);
     }
 
     #[test]
@@ -367,7 +368,7 @@ mod tests {
             crate::canvas::Color::new(1.0, 1.0, 1.0),
         );
         world.light = light;
-        let sphere2 = world.objects[1];
+        let sphere2 = world.objects[1].as_ref();
         let ray = Ray::new(Point3::new(0.0, 0.0, 5.0), Vector3::new(0.0, 0.0, 1.0));
         let intersection = Intersection::new(4.0, sphere2);
         let comps = Computations::prepare_computations(&intersection, &ray).unwrap();
@@ -384,8 +385,8 @@ mod tests {
             transform: Transform::translation(Translation3::new(0.0, 0.0, 1.0)),
             ..Default::default()
         };
-        world.objects[0] = sphere;
-        let intersection = Intersection::new(5.0, world.objects[0]);
+        world.objects[0] = Box::new(sphere);
+        let intersection = Intersection::new(5.0, world.objects[0].as_ref());
         let comps = Computations::prepare_computations(&intersection, &ray).unwrap();
 
         assert!(comps.over_point.z < -f64::EPSILON / 2.0);

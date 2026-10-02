@@ -1,11 +1,6 @@
 use merlin_rt::{
-    camera::Camera,
-    canvas::Color,
-    light::PointLight,
-    material::Material,
-    scene::World,
-    sphere::Sphere,
-    transforms::{Axis, Transform},
+    camera::Camera, canvas::Color, light::PointLight, material::Material, plane::Plane,
+    scene::World, sphere::Sphere, transforms::Transform,
 };
 
 use anyhow::Result;
@@ -13,35 +8,8 @@ use nalgebra::{Point3, Scale3, Translation3, Vector3};
 use std::path::Path;
 
 fn main() -> Result<()> {
-    let floor = Sphere {
-        transform: Transform::scale(Scale3::new(10.0, 0.01, 10.0)),
-        material: Material {
-            color: Color::new(1.0, 0.9, 0.9),
-            specular: 0.0,
-            ..Default::default()
-        },
-        ..Default::default()
-    };
-    let left_wall = Sphere {
-        transform: Transform::sequence([
-            Transform::scale(Scale3::new(10.0, 0.01, 10.0)),
-            Transform::rotation(Axis::X, std::f64::consts::FRAC_PI_2),
-            Transform::rotation(Axis::Y, -std::f64::consts::FRAC_PI_4),
-            Transform::translation(Translation3::new(0.0, 0.0, 5.0)),
-        ]),
-        material: floor.material,
-        ..Default::default()
-    };
-    let right_wall = Sphere {
-        transform: Transform::sequence([
-            Transform::scale(Scale3::new(10.0, 0.01, 10.0)),
-            Transform::rotation(Axis::X, std::f64::consts::FRAC_PI_2),
-            Transform::rotation(Axis::Y, std::f64::consts::FRAC_PI_4),
-            Transform::translation(Translation3::new(0.0, 0.0, 5.0)),
-        ]),
-        material: floor.material,
-        ..Default::default()
-    };
+    let floor = Plane::default();
+
     let middle = Sphere {
         transform: Transform::translation(Translation3::new(-0.5, 1.0, 0.5)),
         material: Material {
@@ -52,6 +20,7 @@ fn main() -> Result<()> {
         },
         ..Default::default()
     };
+
     let right = Sphere {
         transform: Transform::sequence([
             Transform::scale(Scale3::new(0.5, 0.5, 0.5)),
@@ -65,6 +34,7 @@ fn main() -> Result<()> {
         },
         ..Default::default()
     };
+
     let left = Sphere {
         transform: Transform::sequence([
             Transform::scale(Scale3::new(0.33, 0.33, 0.33)),
@@ -78,17 +48,17 @@ fn main() -> Result<()> {
         },
         ..Default::default()
     };
+
     let world = World::new(
         PointLight::new(Point3::new(-10.0, 10.0, -10.0), Color::new(1.0, 1.0, 1.0)),
         vec![
             Box::new(floor),
-            Box::new(left_wall),
-            Box::new(right_wall),
             Box::new(middle),
             Box::new(right),
             Box::new(left),
         ],
     );
+
     let camera = Camera::new(
         1000,
         500,
@@ -99,9 +69,9 @@ fn main() -> Result<()> {
             Vector3::new(0.0, 1.0, 0.0),
         ),
     );
-    let canvas = camera.render(&world)?;
 
-    canvas.write_to_ppm(Path::new("scene.ppm"))?;
+    let canvas = camera.render(&world)?;
+    canvas.write_to_ppm(Path::new("plane.ppm"))?;
 
     Ok(())
 }

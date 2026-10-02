@@ -43,11 +43,19 @@ impl Default for Sphere {
 }
 
 impl Shape for Sphere {
-    fn transform(&self) -> Transform {
-        self.transform
+    fn transform(&self) -> &Transform {
+        &self.transform
     }
 
-    fn intersect(&self, ray: &Ray) -> Result<Vec<Intersection<Self>>, TransformError> {
+    fn material(&self) -> &Material {
+        &self.material
+    }
+
+    fn material_mut(&mut self) -> &mut Material {
+        &mut self.material
+    }
+
+    fn intersect(&self, ray: &Ray) -> Result<Vec<Intersection<'_>>, TransformError> {
         let ray = Ray::new(
             self.transform().apply_inverse(ray.origin)?,
             self.transform().apply_inverse(ray.direction)?,
@@ -61,11 +69,13 @@ impl Shape for Sphere {
         if discriminant < 0.0 {
             return Ok(vec![]);
         }
+
         let t1 = (-b - discriminant.sqrt()) / (2.0 * a);
         let t2 = (-b + discriminant.sqrt()) / (2.0 * a);
+
         Ok(vec![
-            Intersection::new(t1, *self),
-            Intersection::new(t2, *self),
+            Intersection::new(t1, self),
+            Intersection::new(t2, self),
         ])
     }
 
@@ -181,10 +191,13 @@ mod test {
     #[test]
     fn test_intersection_encapsulates_t_and_object() {
         let sphere = Sphere::default();
-        let intersection = Intersection::new(3.5, sphere);
+        let intersection = Intersection::new(3.5, &sphere);
 
         assert_abs_diff_eq!(intersection.t, 3.5);
-        assert_eq!(intersection.object.id, sphere.id);
+        assert!(std::ptr::eq(
+            intersection.object,
+            &sphere as &dyn Shape
+        ));
     }
 
     #[test]
@@ -194,15 +207,21 @@ mod test {
         let intersections = sphere.intersect(&ray).unwrap();
 
         assert_eq!(intersections.len(), 2);
-        assert_eq!(intersections[0].object.id, sphere.id);
-        assert_eq!(intersections[1].object.id, sphere.id);
+        assert!(std::ptr::addr_eq(
+            intersections[0].object,
+            &sphere as &dyn Shape
+        ));
+        assert!(std::ptr::addr_eq(
+            intersections[1].object,
+            &sphere as &dyn Shape
+        ));
     }
 
     #[test]
     fn test_hit_when_all_intersections_have_positive_t() {
         let sphere = Sphere::default();
-        let i1 = Intersection::new(1.0, sphere);
-        let i2 = Intersection::new(2.0, sphere);
+        let i1 = Intersection::new(1.0, &sphere);
+        let i2 = Intersection::new(2.0, &sphere);
         let mut intersections = vec![i1, i2];
 
         let hit = Intersection::hit(&mut intersections).unwrap();
@@ -212,8 +231,8 @@ mod test {
     #[test]
     fn test_hit_when_some_intersections_have_negative_t() {
         let sphere = Sphere::default();
-        let i1 = Intersection::new(-1.0, sphere);
-        let i2 = Intersection::new(1.0, sphere);
+        let i1 = Intersection::new(-1.0, &sphere);
+        let i2 = Intersection::new(1.0, &sphere);
         let mut intersections = vec![i1, i2];
 
         let hit = Intersection::hit(&mut intersections).unwrap();
@@ -223,8 +242,8 @@ mod test {
     #[test]
     fn test_hit_when_all_intersections_have_negative_t() {
         let sphere = Sphere::default();
-        let i1 = Intersection::new(-2.0, sphere);
-        let i2 = Intersection::new(-1.0, sphere);
+        let i1 = Intersection::new(-2.0, &sphere);
+        let i2 = Intersection::new(-1.0, &sphere);
         let mut intersections = vec![i1, i2];
 
         let hit = Intersection::hit(&mut intersections);
@@ -234,10 +253,10 @@ mod test {
     #[test]
     fn test_hit_is_lowest_nonnegative_intersection() {
         let sphere = Sphere::default();
-        let i1 = Intersection::new(5.0, sphere);
-        let i2 = Intersection::new(7.0, sphere);
-        let i3 = Intersection::new(-3.0, sphere);
-        let i4 = Intersection::new(2.0, sphere);
+        let i1 = Intersection::new(5.0, &sphere);
+        let i2 = Intersection::new(7.0, &sphere);
+        let i3 = Intersection::new(-3.0, &sphere);
+        let i4 = Intersection::new(2.0, &sphere);
         let mut intersections = vec![i1, i2, i3, i4];
 
         let hit = Intersection::hit(&mut intersections).unwrap();

@@ -1,7 +1,8 @@
 use merlin_rt::{
     canvas::{Canvas, Color},
     material::Material,
-    ray::{Intersectable, Intersection, Ray},
+    ray::{Ray},
+    shape::{Intersection, Shape},
     sphere::Sphere,
     transforms::{Axis, Transform},
 };
