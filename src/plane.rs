@@ -53,7 +53,10 @@ impl Shape for Plane {
     }
 
     fn normal_at(&self, _world_point: Point3<f64>) -> Result<Vector3<f64>, TransformError> {
-        Ok(Vector3::new(0.0, 1.0, 0.0))
+        Ok(self
+            .transform
+            .apply_transpose_inverse(Vector3::new(0.0, 1.0, 0.0))?
+            .normalize())
     }
 }
 
