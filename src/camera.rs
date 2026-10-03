@@ -1,7 +1,7 @@
 use crate::{
     canvas::{Canvas, CanvasError},
     ray::Ray,
-    scene::World,
+    scene::{MAX_RECURSION_DEPTH, World},
     transforms::{Transform, TransformError},
 };
 
@@ -72,7 +72,7 @@ impl Camera {
         for y in 0..self.vsize {
             for x in 0..self.hsize {
                 let ray = self.ray_for_pixel(x, y)?;
-                let color = world.color_at(&ray)?;
+                let color = world.color_at(&ray, MAX_RECURSION_DEPTH)?;
                 image.write_pixel(x, y, color)?;
             }
         }

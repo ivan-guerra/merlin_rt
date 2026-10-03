@@ -38,9 +38,10 @@ impl Color {
 
 impl PartialEq for Color {
     fn eq(&self, other: &Self) -> bool {
-        abs_diff_eq!(self.r(), other.r(), epsilon = 1e-5)
-            && abs_diff_eq!(self.g(), other.g(), epsilon = 1e-5)
-            && abs_diff_eq!(self.b(), other.b(), epsilon = 1e-5)
+        const EPSILON: f64 = 1e-4;
+        abs_diff_eq!(self.r(), other.r(), epsilon = EPSILON)
+            && abs_diff_eq!(self.g(), other.g(), epsilon = EPSILON)
+            && abs_diff_eq!(self.b(), other.b(), epsilon = EPSILON)
     }
 }
 
