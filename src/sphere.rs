@@ -1,15 +1,16 @@
-use crate::canvas::Color;
-use crate::light::{Lighting, PointLight};
-use crate::material::Material;
-use crate::ray::Ray;
-use crate::shape::Intersection;
-use crate::shape::Shape;
-use crate::transforms::{Transform, TransformError};
+use crate::{
+    canvas::Color,
+    light::{Lighting, PointLight},
+    material::Material,
+    ray::Ray,
+    shape::{Intersection, Shape},
+    transforms::{Transform, TransformError},
+};
 
 use nalgebra::{Point3, Vector3};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Sphere {
     pub id: Uuid,
     pub radius: f64,
@@ -95,9 +96,14 @@ impl Lighting for Sphere {
         eyev: Vector3<f64>,
         normalv: Vector3<f64>,
         in_shadow: bool,
-    ) -> Color {
+    ) -> Result<Color, TransformError> {
+        let color = if let Some(pattern) = &self.material.pattern {
+            pattern.pattern_at_object(self.transform(), point)?
+        } else {
+            self.material.color
+        };
         let black: Color = Color::new(0.0, 0.0, 0.0);
-        let effective_color = self.material.color * light.intensity;
+        let effective_color = color * light.intensity;
         let lightv = (light.position - point).normalize();
         let ambient = effective_color * self.material.ambient;
         let light_dot_normal = lightv.dot(&normalv);
@@ -122,9 +128,9 @@ impl Lighting for Sphere {
         }
 
         if in_shadow {
-            ambient
+            Ok(ambient)
         } else {
-            ambient + diffuse + specular
+            Ok(ambient + diffuse + specular)
         }
     }
 }
@@ -194,10 +200,7 @@ mod test {
         let intersection = Intersection::new(3.5, &sphere);
 
         assert_abs_diff_eq!(intersection.t, 3.5);
-        assert!(std::ptr::eq(
-            intersection.object,
-            &sphere as &dyn Shape
-        ));
+        assert!(std::ptr::eq(intersection.object, &sphere as &dyn Shape));
     }
 
     #[test]
@@ -422,7 +425,9 @@ mod test {
         let eyev = Vector3::new(0.0, 0.0, -1.0);
         let normalv = Vector3::new(0.0, 0.0, -1.0);
         let light = PointLight::new(Point3::new(0.0, 0.0, -10.0), Color::new(1.0, 1.0, 1.0));
-        let result = sphere.lighting(light, position, eyev, normalv, false);
+        let result = sphere
+            .lighting(light, position, eyev, normalv, false)
+            .unwrap();
 
         assert_abs_diff_eq!(result.r(), 1.9);
         assert_abs_diff_eq!(result.g(), 1.9);
@@ -436,7 +441,9 @@ mod test {
         let eyev = Vector3::new(0.0, 2f64.sqrt() / 2.0, -2f64.sqrt() / 2.0);
         let normalv = Vector3::new(0.0, 0.0, -1.0);
         let light = PointLight::new(Point3::new(0.0, 0.0, -10.0), Color::new(1.0, 1.0, 1.0));
-        let result = sphere.lighting(light, position, eyev, normalv, false);
+        let result = sphere
+            .lighting(light, position, eyev, normalv, false)
+            .unwrap();
 
         assert_abs_diff_eq!(result.r(), 1.0);
         assert_abs_diff_eq!(result.g(), 1.0);
@@ -450,7 +457,9 @@ mod test {
         let eyev = Vector3::new(0.0, 0.0, -1.0);
         let normalv = Vector3::new(0.0, 0.0, -1.0);
         let light = PointLight::new(Point3::new(0.0, 10.0, -10.0), Color::new(1.0, 1.0, 1.0));
-        let result = sphere.lighting(light, position, eyev, normalv, false);
+        let result = sphere
+            .lighting(light, position, eyev, normalv, false)
+            .unwrap();
 
         assert_abs_diff_eq!(result.r(), 0.736396, epsilon = 1e-5);
         assert_abs_diff_eq!(result.g(), 0.736396, epsilon = 1e-5);
@@ -464,7 +473,9 @@ mod test {
         let eyev = Vector3::new(0.0, -2f64.sqrt() / 2.0, -2f64.sqrt() / 2.0);
         let normalv = Vector3::new(0.0, 0.0, -1.0);
         let light = PointLight::new(Point3::new(0.0, 10.0, -10.0), Color::new(1.0, 1.0, 1.0));
-        let result = sphere.lighting(light, position, eyev, normalv, false);
+        let result = sphere
+            .lighting(light, position, eyev, normalv, false)
+            .unwrap();
 
         assert_abs_diff_eq!(result.r(), 1.636396, epsilon = 1e-5);
         assert_abs_diff_eq!(result.g(), 1.636396, epsilon = 1e-5);
@@ -478,7 +489,9 @@ mod test {
         let eyev = Vector3::new(0.0, 0.0, -1.0);
         let normalv = Vector3::new(0.0, 0.0, -1.0);
         let light = PointLight::new(Point3::new(0.0, 0.0, 10.0), Color::new(1.0, 1.0, 1.0));
-        let result = sphere.lighting(light, position, eyev, normalv, false);
+        let result = sphere
+            .lighting(light, position, eyev, normalv, false)
+            .unwrap();
 
         assert_abs_diff_eq!(result.r(), 0.1);
         assert_abs_diff_eq!(result.g(), 0.1);
@@ -493,7 +506,9 @@ mod test {
         let normalv = Vector3::new(0.0, 0.0, -1.0);
         let light = PointLight::new(Point3::new(0.0, 0.0, -10.0), Color::new(1.0, 1.0, 1.0));
         let in_shadow = true;
-        let result = sphere.lighting(light, position, eyev, normalv, in_shadow);
+        let result = sphere
+            .lighting(light, position, eyev, normalv, in_shadow)
+            .unwrap();
 
         assert_abs_diff_eq!(result.r(), 0.1);
         assert_abs_diff_eq!(result.g(), 0.1);

@@ -1,4 +1,4 @@
-use crate::canvas::Color;
+use crate::{canvas::Color, transforms::TransformError};
 
 use nalgebra::{Point3, Vector3};
 
@@ -25,7 +25,7 @@ pub trait Lighting {
         eyev: Vector3<f64>,
         normalv: Vector3<f64>,
         in_shadow: bool,
-    ) -> Color;
+    ) -> Result<Color, TransformError>;
 }
 
 #[cfg(test)]

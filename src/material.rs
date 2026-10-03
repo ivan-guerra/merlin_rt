@@ -1,22 +1,31 @@
-use crate::canvas::Color;
+use crate::{canvas::Color, pattern::Pattern};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug)]
 pub struct Material {
     pub color: Color,
     pub ambient: f64,
     pub diffuse: f64,
     pub specular: f64,
     pub shininess: f64,
+    pub pattern: Option<Box<dyn Pattern>>,
 }
 
 impl Material {
-    pub fn new(color: Color, ambient: f64, diffuse: f64, specular: f64, shininess: f64) -> Self {
+    pub fn new(
+        color: Color,
+        ambient: f64,
+        diffuse: f64,
+        specular: f64,
+        shininess: f64,
+        pattern: Option<Box<dyn Pattern>>,
+    ) -> Self {
         Material {
             color,
             ambient,
             diffuse,
             specular,
             shininess,
+            pattern,
         }
     }
 }
@@ -29,7 +38,18 @@ impl Default for Material {
             diffuse: 0.9,
             specular: 0.9,
             shininess: 200.0,
+            pattern: None,
         }
+    }
+}
+
+impl PartialEq for Material {
+    fn eq(&self, other: &Self) -> bool {
+        self.color == other.color
+            && (self.ambient - other.ambient).abs() < 1e-5
+            && (self.diffuse - other.diffuse).abs() < 1e-5
+            && (self.specular - other.specular).abs() < 1e-5
+            && (self.shininess - other.shininess).abs() < 1e-5
     }
 }
 

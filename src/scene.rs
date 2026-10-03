@@ -1,6 +1,6 @@
 use crate::{
     canvas::Color,
-    light::{PointLight},
+    light::PointLight,
     material::Material,
     ray::Ray,
     shape::{Intersection, Shape},
@@ -51,20 +51,20 @@ impl World {
         intersections
     }
 
-    pub fn shade_hit(&self, comps: &Computations) -> Color {
+    pub fn shade_hit(&self, comps: &Computations) -> Result<Color, TransformError> {
         let shadowed = self.is_shadowed(comps.over_point);
         comps
             .object
             .lighting(self.light, comps.point, comps.eyev, comps.normalv, shadowed)
     }
 
-    pub fn color_at(&self, ray: &Ray) -> Color {
+    pub fn color_at(&self, ray: &Ray) -> Result<Color, TransformError> {
         let mut intersections = self.intersect(ray);
         if let Some(hit) = Intersection::hit(&mut intersections) {
             let comps = Computations::prepare_computations(hit, ray).unwrap();
-            self.shade_hit(&comps)
+            Ok(self.shade_hit(&comps)?)
         } else {
-            Color::new(0.0, 0.0, 0.0)
+            Ok(Color::new(0.0, 0.0, 0.0))
         }
     }
 
@@ -229,7 +229,7 @@ mod tests {
         let sphere = world.objects[0].as_ref();
         let intersection = Intersection::new(4.0, sphere);
         let comps = Computations::prepare_computations(&intersection, &ray).unwrap();
-        let color = world.shade_hit(&comps);
+        let color = world.shade_hit(&comps).unwrap();
 
         assert_eq!(color, Color::new(0.38066, 0.47583, 0.2855));
     }
@@ -247,7 +247,7 @@ mod tests {
         let sphere = world.objects[1].as_ref();
         let intersection = Intersection::new(0.5, sphere);
         let comps = Computations::prepare_computations(&intersection, &ray).unwrap();
-        let color = world.shade_hit(&comps);
+        let color = world.shade_hit(&comps).unwrap();
 
         assert_eq!(color, Color::new(0.90498, 0.90498, 0.90498));
     }
@@ -256,7 +256,7 @@ mod tests {
     fn test_color_when_a_ray_misses() {
         let world = World::default();
         let ray = Ray::new(Point3::new(0.0, 0.0, -5.0), Vector3::new(0.0, 1.0, 0.0));
-        let color = world.color_at(&ray);
+        let color = world.color_at(&ray).unwrap();
 
         assert_eq!(color, Color::new(0.0, 0.0, 0.0));
     }
@@ -265,7 +265,7 @@ mod tests {
     fn test_color_when_a_ray_hits() {
         let world = World::default();
         let ray = Ray::new(Point3::new(0.0, 0.0, -5.0), Vector3::new(0.0, 0.0, 1.0));
-        let color = world.color_at(&ray);
+        let color = world.color_at(&ray).unwrap();
 
         assert_eq!(color, Color::new(0.38066, 0.47583, 0.2855));
     }
@@ -278,7 +278,7 @@ mod tests {
         let expected_color = world.objects[1].material().color;
 
         let ray = Ray::new(Point3::new(0.0, 0.0, 0.75), Vector3::new(0.0, 0.0, -1.0));
-        let color = world.color_at(&ray);
+        let color = world.color_at(&ray).unwrap();
 
         assert_eq!(color, expected_color);
     }
@@ -372,7 +372,7 @@ mod tests {
         let ray = Ray::new(Point3::new(0.0, 0.0, 5.0), Vector3::new(0.0, 0.0, 1.0));
         let intersection = Intersection::new(4.0, sphere2);
         let comps = Computations::prepare_computations(&intersection, &ray).unwrap();
-        let color = world.shade_hit(&comps);
+        let color = world.shade_hit(&comps).unwrap();
 
         assert_eq!(color, Color::new(0.1, 0.1, 0.1));
     }

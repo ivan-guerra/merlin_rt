@@ -2,6 +2,7 @@ pub mod camera;
 pub mod canvas;
 pub mod light;
 pub mod material;
+pub mod pattern;
 pub mod plane;
 pub mod ray;
 pub mod scene;

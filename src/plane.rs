@@ -9,7 +9,7 @@ use crate::{
 
 use nalgebra::{Point3, Vector3};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Plane {
     pub transform: Transform,
     pub material: Material,
@@ -68,20 +68,25 @@ impl Lighting for Plane {
         eyev: Vector3<f64>,
         normalv: Vector3<f64>,
         in_shadow: bool,
-    ) -> Color {
+    ) -> Result<Color, TransformError> {
+        let color = if let Some(pattern) = &self.material.pattern {
+            pattern.pattern_at_object(self.transform(), point)?
+        } else {
+            self.material.color
+        };
         let black = Color::new(0.0, 0.0, 0.0);
-        let effective_color = self.material.color * light.intensity;
+        let effective_color = color * light.intensity;
         let ambient = effective_color * self.material.ambient;
 
         if in_shadow {
-            return ambient;
+            return Ok(ambient);
         }
 
         let lightv = (light.position - point).normalize();
         let light_dot_normal = lightv.dot(&normalv);
 
         if light_dot_normal < 0.0 {
-            return ambient;
+            return Ok(ambient);
         }
 
         let diffuse = effective_color * self.material.diffuse * light_dot_normal;
@@ -95,7 +100,7 @@ impl Lighting for Plane {
             light.intensity * self.material.specular * factor
         };
 
-        ambient + diffuse + specular
+        Ok(ambient + diffuse + specular)
     }
 }
 

@@ -1,8 +1,8 @@
 use merlin_rt::{
     canvas::{Canvas, Color},
-    light::{PointLight},
+    light::PointLight,
     material::Material,
-    ray::{Ray},
+    ray::Ray,
     shape::{Intersection, Shape},
     sphere::Sphere,
     transforms::Transform,
@@ -48,7 +48,9 @@ fn main() -> Result<()> {
 
             let point = ray.position(hit.t);
             let normal = hit.object.normal_at(point)?;
-            let color = hit.object.lighting(light, point, -direction, normal, false);
+            let color = hit
+                .object
+                .lighting(light, point, -direction, normal, false)?;
             canvas.write_pixel(x, y, color)?;
         }
     }

@@ -2,7 +2,7 @@ use approx::abs_diff_eq;
 use nalgebra::Vector3;
 use std::fs::File;
 use std::io::Write;
-use std::ops::{Add, Mul};
+use std::ops::{Add, Mul, Sub};
 use std::path::Path;
 use thiserror::Error;
 
@@ -19,7 +19,7 @@ pub enum CanvasError {
 pub struct Color(Vector3<f64>);
 
 impl Color {
-    pub fn new(r: f64, g: f64, b: f64) -> Self {
+    pub const fn new(r: f64, g: f64, b: f64) -> Self {
         Color(Vector3::new(r, g, b))
     }
 
@@ -52,6 +52,18 @@ impl Add<Color> for Color {
             self.r() + rhs.r(),
             self.g() + rhs.g(),
             self.b() + rhs.b(),
+        ))
+    }
+}
+
+impl Sub<Color> for Color {
+    type Output = Color;
+
+    fn sub(self, rhs: Color) -> Self::Output {
+        Color(Vector3::new(
+            self.r() - rhs.r(),
+            self.g() - rhs.g(),
+            self.b() - rhs.b(),
         ))
     }
 }

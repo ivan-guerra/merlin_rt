@@ -29,7 +29,11 @@ fn main() -> Result<()> {
             Transform::rotation(Axis::Y, -std::f64::consts::FRAC_PI_4),
             Transform::translation(Translation3::new(0.0, 0.0, 5.0)),
         ]),
-        material: floor.material,
+        material: Material {
+            color: Color::new(1.0, 0.9, 0.9),
+            specular: 0.0,
+            ..Default::default()
+        },
         ..Default::default()
     };
     let right_wall = Sphere {
@@ -39,7 +43,11 @@ fn main() -> Result<()> {
             Transform::rotation(Axis::Y, std::f64::consts::FRAC_PI_4),
             Transform::translation(Translation3::new(0.0, 0.0, 5.0)),
         ]),
-        material: floor.material,
+        material: Material {
+            color: Color::new(1.0, 0.9, 0.9),
+            specular: 0.0,
+            ..Default::default()
+        },
         ..Default::default()
     };
     let middle = Sphere {
