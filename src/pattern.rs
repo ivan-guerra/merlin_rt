@@ -9,6 +9,16 @@ use std::fmt::Debug;
 const BLACK: Color = Color::new(0.0, 0.0, 0.0);
 const WHITE: Color = Color::new(1.0, 1.0, 1.0);
 
+fn stable_floor(value: f64) -> i32 {
+    const EPSILON: f64 = 1e-5;
+
+    if value.abs() < EPSILON {
+        0
+    } else {
+        value.floor() as i32
+    }
+}
+
 pub trait Pattern: Debug {
     fn pattern_at(&self, world_point: Point3<f64>) -> Color;
     fn pattern_at_object(
@@ -147,9 +157,7 @@ impl Default for CheckerPattern {
 
 impl Pattern for CheckerPattern {
     fn pattern_at(&self, world_point: Point3<f64>) -> Color {
-        if (world_point.x.floor() as i32
-            + world_point.y.floor() as i32
-            + world_point.z.floor() as i32)
+        if (stable_floor(world_point.x) + stable_floor(world_point.y) + stable_floor(world_point.z))
             % 2
             == 0
         {
