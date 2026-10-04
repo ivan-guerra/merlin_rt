@@ -64,7 +64,7 @@ impl Shape for Sphere {
         let sphere_to_ray = ray.origin - self.center;
         let a = ray.direction.dot(&ray.direction);
         let b = 2.0 * ray.direction.dot(&sphere_to_ray);
-        let c = sphere_to_ray.dot(&sphere_to_ray) - 1.0;
+        let c = sphere_to_ray.dot(&sphere_to_ray) - self.radius * self.radius;
         let discriminant = b * b - 4.0 * a * c;
 
         if discriminant < 0.0 {
@@ -82,7 +82,7 @@ impl Shape for Sphere {
 
     fn normal_at(&self, world_point: Point3<f64>) -> Result<Vector3<f64>, TransformError> {
         let object_point = self.transform.apply_inverse(world_point)?;
-        let object_normal = object_point - self.center;
+        let object_normal = (object_point - self.center) / self.radius;
         let world_normal = self.transform.apply_transpose_inverse(object_normal)?;
         Ok(world_normal.normalize())
     }
