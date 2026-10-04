@@ -38,3 +38,9 @@ impl<'a> Intersection<'a> {
             .find(|intersection| intersection.t >= 0.0)
     }
 }
+
+impl PartialEq for Intersection<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.t == other.t && std::ptr::addr_eq(self.object, other.object)
+    }
+}

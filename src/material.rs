@@ -8,10 +8,13 @@ pub struct Material {
     pub specular: f64,
     pub shininess: f64,
     pub reflective: f64,
+    pub transparency: f64,
+    pub refractive_index: f64,
     pub pattern: Option<Box<dyn Pattern>>,
 }
 
 impl Material {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         color: Color,
         ambient: f64,
@@ -19,6 +22,8 @@ impl Material {
         specular: f64,
         shininess: f64,
         reflective: f64,
+        transparency: f64,
+        refractive_index: f64,
         pattern: Option<Box<dyn Pattern>>,
     ) -> Self {
         Material {
@@ -28,6 +33,8 @@ impl Material {
             specular,
             shininess,
             reflective,
+            transparency,
+            refractive_index,
             pattern,
         }
     }
@@ -42,6 +49,8 @@ impl Default for Material {
             specular: 0.9,
             shininess: 200.0,
             reflective: 0.0,
+            transparency: 0.0,
+            refractive_index: 1.0,
             pattern: None,
         }
     }
@@ -74,5 +83,7 @@ mod tests {
         assert_abs_diff_eq!(material.specular, 0.9);
         assert_abs_diff_eq!(material.shininess, 200.0);
         assert_abs_diff_eq!(material.reflective, 0.0);
+        assert_abs_diff_eq!(material.transparency, 0.0);
+        assert_abs_diff_eq!(material.refractive_index, 1.0);
     }
 }
