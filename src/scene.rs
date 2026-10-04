@@ -213,7 +213,7 @@ impl Computations<'_> {
             let mut n2 = None;
 
             for i in xs {
-                if i == intersection {
+                if std::ptr::eq(i, intersection) {
                     n1 = Some(
                         containers
                             .last()
@@ -230,7 +230,7 @@ impl Computations<'_> {
                     containers.push(i.object);
                 }
 
-                if i == intersection {
+                if std::ptr::eq(i, intersection) {
                     n2 = Some(
                         containers
                             .last()
@@ -716,6 +716,28 @@ mod tests {
             assert_abs_diff_eq!(comps.n1.unwrap(), expected_n1_n2[i].0);
             assert_abs_diff_eq!(comps.n2.unwrap(), expected_n1_n2[i].1);
         }
+    }
+
+    #[test]
+    fn test_finding_n1_and_n2_for_coincident_intersections() {
+        let shape = glass_sphere();
+        let ray = Ray::new(Point3::new(0.0, 1.0, -5.0), Vector3::new(0.0, 0.0, 1.0));
+        let intersections = vec![
+            Intersection::new(5.0, &shape),
+            Intersection::new(5.0, &shape),
+        ];
+
+        let entering =
+            Computations::prepare_computations(&intersections[0], &ray, Some(&intersections))
+                .unwrap();
+        let exiting =
+            Computations::prepare_computations(&intersections[1], &ray, Some(&intersections))
+                .unwrap();
+
+        assert_abs_diff_eq!(entering.n1.unwrap(), 1.0);
+        assert_abs_diff_eq!(entering.n2.unwrap(), 1.5);
+        assert_abs_diff_eq!(exiting.n1.unwrap(), 1.5);
+        assert_abs_diff_eq!(exiting.n2.unwrap(), 1.0);
     }
 
     #[test]
