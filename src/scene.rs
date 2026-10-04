@@ -41,17 +41,16 @@ impl World {
         World { light, objects }
     }
 
-    pub fn intersect<'a>(&'a self, ray: &Ray) -> Vec<Intersection<'a>> {
+    pub fn intersect<'a>(&'a self, ray: &Ray) -> Result<Vec<Intersection<'a>>, TransformError> {
         let mut intersections = Vec::new();
 
         for object in &self.objects {
-            if let Ok(mut object_intersections) = object.intersect(ray) {
-                intersections.append(&mut object_intersections);
-            }
+            let mut object_intersections = object.intersect(ray)?;
+            intersections.append(&mut object_intersections);
         }
 
         intersections.sort_by(|a, b| a.t.total_cmp(&b.t));
-        intersections
+        Ok(intersections)
     }
 
     pub fn shade_hit(
@@ -60,10 +59,13 @@ impl World {
         remaining: usize,
     ) -> Result<Color, TransformError> {
         let shadowed = self.is_shadowed(comps.over_point);
-        let surface =
-            comps
-                .object
-                .lighting(self.light, comps.point, comps.eyev, comps.normalv, shadowed)?;
+        let surface = comps.object.lighting(
+            self.light,
+            comps.point,
+            comps.eyev,
+            comps.normalv,
+            shadowed.unwrap(),
+        )?;
         let reflected = self.reflected_color(comps, remaining)?;
         let refracted = self.refracted_color(comps, remaining)?;
 
@@ -76,7 +78,7 @@ impl World {
     }
 
     pub fn color_at(&self, ray: &Ray, remaining: usize) -> Result<Color, TransformError> {
-        let intersections = self.intersect(ray);
+        let intersections = self.intersect(ray)?;
 
         if let Some(hit_index) = intersections
             .iter()
@@ -93,18 +95,18 @@ impl World {
         }
     }
 
-    pub fn is_shadowed(&self, point: Point3<f64>) -> bool {
+    pub fn is_shadowed(&self, point: Point3<f64>) -> Result<bool, TransformError> {
         let v = self.light.position - point;
         let distance = v.magnitude();
         let direction = v.normalize();
 
         let r = Ray::new(point, direction);
-        let mut intersections = self.intersect(&r);
+        let mut intersections = self.intersect(&r)?;
 
         if let Some(hit) = Intersection::hit(&mut intersections) {
-            hit.t < distance
+            Ok(hit.t < distance)
         } else {
-            false
+            Ok(false)
         }
     }
 
@@ -342,13 +344,13 @@ mod tests {
         let world = World::default();
         let ray = Ray::new(Point3::new(0.0, 0.0, -5.0), Vector3::new(0.0, 0.0, 1.0));
 
-        let intersections = world.intersect(&ray);
+        let intersections = world.intersect(&ray).unwrap();
 
         assert_eq!(intersections.len(), 4);
-        assert_abs_diff_eq!(intersections[0].t, 4.0);
-        assert_abs_diff_eq!(intersections[1].t, 4.5);
-        assert_abs_diff_eq!(intersections[2].t, 5.5);
-        assert_abs_diff_eq!(intersections[3].t, 6.0);
+        assert_eq!(intersections[0].t, 4.0);
+        assert_eq!(intersections[1].t, 4.5);
+        assert_eq!(intersections[2].t, 5.5);
+        assert_eq!(intersections[3].t, 6.0);
     }
 
     #[test]
@@ -499,7 +501,7 @@ mod tests {
         let world = World::default();
         let point = Point3::new(0.0, 10.0, 0.0);
 
-        assert!(!world.is_shadowed(point));
+        assert!(!world.is_shadowed(point).unwrap());
     }
 
     #[test]
@@ -507,7 +509,7 @@ mod tests {
         let world = World::default();
         let point = Point3::new(10.0, -10.0, 10.0);
 
-        assert!(world.is_shadowed(point));
+        assert!(world.is_shadowed(point).unwrap());
     }
 
     #[test]
@@ -515,7 +517,7 @@ mod tests {
         let world = World::default();
         let point = Point3::new(-20.0, 20.0, -20.0);
 
-        assert!(!world.is_shadowed(point));
+        assert!(!world.is_shadowed(point).unwrap());
     }
 
     #[test]
@@ -523,7 +525,7 @@ mod tests {
         let world = World::default();
         let point = Point3::new(-2.0, 2.0, -2.0);
 
-        assert!(!world.is_shadowed(point));
+        assert!(!world.is_shadowed(point).unwrap());
     }
 
     #[test]
