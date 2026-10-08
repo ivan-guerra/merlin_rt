@@ -1,7 +1,7 @@
 use anyhow::Result;
 use merlin_rt::{
-    camera::Camera, canvas::Color, light::PointLight, material::Material, scene::World,
-    shapes::DoubleNappedCone, transforms::Transform,
+    camera::Camera, canvas::Color, light::PointLight, material::Material, shapes::DoubleNappedCone,
+    transforms::Transform, world::World,
 };
 use nalgebra::{Point3, Scale3, Vector3};
 use std::path::Path;

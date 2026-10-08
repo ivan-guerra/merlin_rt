@@ -3,9 +3,9 @@ use merlin_rt::{
     canvas::Color,
     light::PointLight,
     material::Material,
-    scene::World,
     shapes::Sphere,
     transforms::{Axis, Transform},
+    world::World,
 };
 
 use anyhow::Result;

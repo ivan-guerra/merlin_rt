@@ -4,9 +4,9 @@ use merlin_rt::{
     canvas::Color,
     light::PointLight,
     material::Material,
-    scene::World,
     shapes::{Cylinder, DoubleNappedCone, Plane, Shape, Sphere},
     transforms::Transform,
+    world::World,
 };
 use nalgebra::{Point3, Scale3, Translation3, Vector3};
 use std::path::Path;

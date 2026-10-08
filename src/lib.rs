@@ -4,6 +4,6 @@ pub mod light;
 pub mod material;
 pub mod pattern;
 pub mod ray;
-pub mod scene;
 pub mod shapes;
 pub mod transforms;
+pub mod world;

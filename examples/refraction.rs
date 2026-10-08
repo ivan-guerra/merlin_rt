@@ -5,9 +5,9 @@ use merlin_rt::{
     light::PointLight,
     material::Material,
     pattern::CheckerPattern,
-    scene::World,
     shapes::{Plane, Sphere},
     transforms::Transform,
+    world::World,
 };
 use nalgebra::{Point3, Scale3, Translation3, Vector3};
 use std::path::Path;
