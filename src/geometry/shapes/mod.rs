@@ -15,17 +15,58 @@ use crate::{
         ray::Ray,
         transforms::{Transform, TransformError},
     },
-    scene::{light::Lighting, material::Material},
+    rendering::canvas::Color,
+    scene::{light::PointLight, material::Material},
 };
 use nalgebra::{Point3, Vector3};
 use std::fmt::Debug;
 
-pub trait Shape: Debug + Lighting {
+pub trait Shape: Debug {
     fn transform(&self) -> &Transform;
     fn material(&self) -> &Material;
     fn material_mut(&mut self) -> &mut Material;
     fn intersect(&self, ray: &Ray) -> Result<Vec<Intersection<'_>>, TransformError>;
     fn normal_at(&self, world_point: Point3<f64>) -> Result<Vector3<f64>, TransformError>;
+    fn lighting(
+        &self,
+        light: PointLight,
+        point: Point3<f64>,
+        eyev: Vector3<f64>,
+        normalv: Vector3<f64>,
+        in_shadow: bool,
+    ) -> Result<Color, TransformError> {
+        let material = self.material();
+        let color = match &material.pattern {
+            Some(pattern) => pattern.pattern_at_object(self.transform(), point)?,
+            None => material.color,
+        };
+
+        let effective_color = color * light.intensity;
+        let ambient = effective_color * material.ambient;
+
+        if in_shadow {
+            return Ok(ambient);
+        }
+
+        let lightv = (light.position - point).normalize();
+        let light_dot_normal = lightv.dot(&normalv);
+
+        if light_dot_normal < 0.0 {
+            return Ok(ambient);
+        }
+
+        let diffuse = effective_color * material.diffuse * light_dot_normal;
+        let reflectv = Transform::reflection(normalv).apply(-lightv);
+        let reflect_dot_eye = reflectv.dot(&eyev);
+
+        let specular = if reflect_dot_eye <= 0.0 {
+            Color::new(0.0, 0.0, 0.0)
+        } else {
+            light.intensity * material.specular * reflect_dot_eye.powf(material.shininess)
+        };
+
+        Ok(ambient + diffuse + specular)
+    }
 }
 
 #[derive(Debug)]

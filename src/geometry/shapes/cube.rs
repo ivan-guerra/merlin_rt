@@ -4,11 +4,7 @@ use crate::{
         shapes::{Intersection, Shape},
         transforms::{Transform, TransformError},
     },
-    rendering::canvas::Color,
-    scene::{
-        light::{Lighting, PointLight},
-        material::Material,
-    },
+    scene::material::Material,
 };
 
 use nalgebra::{Point3, Vector3};
@@ -55,44 +51,6 @@ impl Cube {
             material,
             transform,
         }
-    }
-}
-
-impl Lighting for Cube {
-    fn lighting(
-        &self,
-        light: PointLight,
-        point: Point3<f64>,
-        eyev: Vector3<f64>,
-        normalv: Vector3<f64>,
-        in_shadow: bool,
-    ) -> Result<Color, TransformError> {
-        let effective_color = self.material.color * light.intensity;
-        let lightv = (light.position - point).normalize();
-        let ambient = effective_color * self.material.ambient;
-
-        let light_dot_normal = lightv.dot(&normalv);
-        let diffuse;
-        let specular;
-
-        if light_dot_normal < 0.0 || in_shadow {
-            diffuse = Color::new(0.0, 0.0, 0.0);
-            specular = Color::new(0.0, 0.0, 0.0);
-        } else {
-            diffuse = effective_color * self.material.diffuse * light_dot_normal;
-
-            let reflectv = -lightv + 2.0 * light_dot_normal * normalv;
-            let reflect_dot_eye = reflectv.dot(&eyev);
-
-            if reflect_dot_eye <= 0.0 {
-                specular = Color::new(0.0, 0.0, 0.0);
-            } else {
-                let factor = reflect_dot_eye.powf(self.material.shininess);
-                specular = light.intensity * self.material.specular * factor;
-            }
-        }
-
-        Ok(ambient + diffuse + specular)
     }
 }
 

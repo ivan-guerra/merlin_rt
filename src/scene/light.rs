@@ -1,6 +1,6 @@
-use crate::{geometry::transforms::TransformError, rendering::canvas::Color};
+use crate::rendering::canvas::Color;
 
-use nalgebra::{Point3, Vector3};
+use nalgebra::Point3;
 
 #[derive(Debug, Clone, Copy)]
 pub struct PointLight {
@@ -15,17 +15,6 @@ impl PointLight {
             intensity,
         }
     }
-}
-
-pub trait Lighting {
-    fn lighting(
-        &self,
-        light: PointLight,
-        point: Point3<f64>,
-        eyev: Vector3<f64>,
-        normalv: Vector3<f64>,
-        in_shadow: bool,
-    ) -> Result<Color, TransformError>;
 }
 
 #[cfg(test)]

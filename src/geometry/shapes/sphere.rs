@@ -4,11 +4,7 @@ use crate::{
         shapes::{Intersection, Shape},
         transforms::{Transform, TransformError},
     },
-    rendering::canvas::Color,
-    scene::{
-        light::{Lighting, PointLight},
-        material::Material,
-    },
+    scene::material::Material,
 };
 
 use nalgebra::{Point3, Vector3};
@@ -92,56 +88,13 @@ impl Shape for Sphere {
     }
 }
 
-impl Lighting for Sphere {
-    fn lighting(
-        &self,
-        light: PointLight,
-        point: Point3<f64>,
-        eyev: Vector3<f64>,
-        normalv: Vector3<f64>,
-        in_shadow: bool,
-    ) -> Result<Color, TransformError> {
-        let color = if let Some(pattern) = &self.material.pattern {
-            pattern.pattern_at_object(self.transform(), point)?
-        } else {
-            self.material.color
-        };
-        let black: Color = Color::new(0.0, 0.0, 0.0);
-        let effective_color = color * light.intensity;
-        let lightv = (light.position - point).normalize();
-        let ambient = effective_color * self.material.ambient;
-        let light_dot_normal = lightv.dot(&normalv);
-
-        let diffuse;
-        let specular;
-        if light_dot_normal < 0.0 {
-            diffuse = black;
-            specular = black;
-        } else {
-            diffuse = effective_color * self.material.diffuse * light_dot_normal;
-
-            let reflectv = Transform::reflection(normalv).apply(-lightv);
-            let reflect_dot_eye = reflectv.dot(&eyev);
-
-            if reflect_dot_eye <= 0.0 {
-                specular = black;
-            } else {
-                let factor = reflect_dot_eye.powf(self.material.shininess);
-                specular = light.intensity * self.material.specular * factor;
-            }
-        }
-
-        if in_shadow {
-            Ok(ambient)
-        } else {
-            Ok(ambient + diffuse + specular)
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::{
+        rendering::canvas::Color,
+        scene::{light::PointLight, material::Material},
+    };
     use approx::assert_abs_diff_eq;
     use nalgebra::{Point3, Scale3, Translation3, Vector3};
 

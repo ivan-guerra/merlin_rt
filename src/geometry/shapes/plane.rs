@@ -4,11 +4,7 @@ use crate::{
         shapes::{Intersection, Shape},
         transforms::{Transform, TransformError},
     },
-    rendering::canvas::Color,
-    scene::{
-        light::{Lighting, PointLight},
-        material::Material,
-    },
+    scene::material::Material,
 };
 
 use nalgebra::{Point3, Vector3};
@@ -61,50 +57,6 @@ impl Shape for Plane {
             .transform
             .apply_transpose_inverse(Vector3::new(0.0, 1.0, 0.0))?
             .normalize())
-    }
-}
-
-impl Lighting for Plane {
-    fn lighting(
-        &self,
-        light: PointLight,
-        point: Point3<f64>,
-        eyev: Vector3<f64>,
-        normalv: Vector3<f64>,
-        in_shadow: bool,
-    ) -> Result<Color, TransformError> {
-        let color = if let Some(pattern) = &self.material.pattern {
-            pattern.pattern_at_object(self.transform(), point)?
-        } else {
-            self.material.color
-        };
-        let black = Color::new(0.0, 0.0, 0.0);
-        let effective_color = color * light.intensity;
-        let ambient = effective_color * self.material.ambient;
-
-        if in_shadow {
-            return Ok(ambient);
-        }
-
-        let lightv = (light.position - point).normalize();
-        let light_dot_normal = lightv.dot(&normalv);
-
-        if light_dot_normal < 0.0 {
-            return Ok(ambient);
-        }
-
-        let diffuse = effective_color * self.material.diffuse * light_dot_normal;
-        let reflectv = Transform::reflection(normalv).apply(-lightv);
-        let reflect_dot_eye = reflectv.dot(&eyev);
-
-        let specular = if reflect_dot_eye <= 0.0 {
-            black
-        } else {
-            let factor = reflect_dot_eye.powf(self.material.shininess);
-            light.intensity * self.material.specular * factor
-        };
-
-        Ok(ambient + diffuse + specular)
     }
 }
 
