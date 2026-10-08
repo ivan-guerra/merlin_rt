@@ -5,9 +5,8 @@ use merlin_rt::{
     light::PointLight,
     material::Material,
     pattern::{CheckerPattern, GradientPattern, StripePattern},
-    plane::Plane,
     scene::World,
-    sphere::Sphere,
+    shapes::{Plane, Sphere},
     transforms::{Axis, Transform},
 };
 use nalgebra::{Point3, Scale3, Translation3, Vector3};

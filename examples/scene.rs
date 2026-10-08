@@ -4,7 +4,7 @@ use merlin_rt::{
     light::PointLight,
     material::Material,
     scene::World,
-    sphere::Sphere,
+    shapes::Sphere,
     transforms::{Axis, Transform},
 };
 

@@ -1,7 +1,13 @@
 use anyhow::Result;
 use merlin_rt::{
-    camera::Camera, canvas::Color, cube::Cube, light::PointLight, material::Material,
-    pattern::CheckerPattern, plane::Plane, scene::World, transforms::Transform,
+    camera::Camera,
+    canvas::Color,
+    light::PointLight,
+    material::Material,
+    pattern::CheckerPattern,
+    scene::World,
+    shapes::{Cube, Plane, Shape},
+    transforms::Transform,
 };
 use nalgebra::{Point3, Scale3, Translation3, Vector3};
 use std::path::Path;
@@ -55,13 +61,13 @@ fn main() -> Result<()> {
         Vector3::new(-2.55, 1.0, 1.55),
         Vector3::new(2.55, 1.0, 1.55),
     ];
-    let legs = leg_positions.into_iter().map(|position| {
-        Box::new(cube(Vector3::new(0.22, 1.0, 0.22), position)) as Box<dyn merlin_rt::shape::Shape>
-    });
+    let legs = leg_positions
+        .into_iter()
+        .map(|position| Box::new(cube(Vector3::new(0.22, 1.0, 0.22), position)) as Box<dyn Shape>);
 
     let centerpiece = cube(Vector3::new(0.35, 0.35, 0.35), Vector3::new(0.0, 2.65, 0.0));
 
-    let mut objects: Vec<Box<dyn merlin_rt::shape::Shape>> =
+    let mut objects: Vec<Box<dyn Shape>> =
         vec![Box::new(floor), Box::new(tabletop), Box::new(centerpiece)];
     objects.extend(legs);
 

@@ -2,10 +2,8 @@ use crate::{
     canvas::Color,
     light::PointLight,
     material::Material,
-    plane::Plane,
     ray::Ray,
-    shape::{Intersection, Shape},
-    sphere::Sphere,
+    shapes::{Intersection, Plane, Shape, Sphere},
     transforms::{Transform, TransformError},
 };
 

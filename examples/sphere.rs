@@ -3,8 +3,7 @@ use merlin_rt::{
     light::PointLight,
     material::Material,
     ray::Ray,
-    shape::{Intersection, Shape},
-    sphere::Sphere,
+    shapes::{Intersection, Shape, Sphere},
     transforms::Transform,
 };
 

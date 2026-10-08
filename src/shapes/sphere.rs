@@ -3,7 +3,7 @@ use crate::{
     light::{Lighting, PointLight},
     material::Material,
     ray::Ray,
-    shape::{Intersection, Shape},
+    shapes::{Intersection, Shape},
     transforms::{Transform, TransformError},
 };
 

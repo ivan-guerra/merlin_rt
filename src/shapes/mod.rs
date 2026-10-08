@@ -1,22 +1,29 @@
+mod cube;
+mod cylinder;
+mod double_napped_cone;
+mod plane;
+mod sphere;
+
+pub use cube::Cube;
+pub use cylinder::Cylinder;
+pub use double_napped_cone::DoubleNappedCone;
+pub use plane::Plane;
+pub use sphere::Sphere;
+
 use crate::{
     light::Lighting,
     material::Material,
     ray::Ray,
     transforms::{Transform, TransformError},
 };
-
 use nalgebra::{Point3, Vector3};
 use std::fmt::Debug;
 
 pub trait Shape: Debug + Lighting {
     fn transform(&self) -> &Transform;
-
     fn material(&self) -> &Material;
-
     fn material_mut(&mut self) -> &mut Material;
-
     fn intersect(&self, ray: &Ray) -> Result<Vec<Intersection<'_>>, TransformError>;
-
     fn normal_at(&self, world_point: Point3<f64>) -> Result<Vector3<f64>, TransformError>;
 }
 
