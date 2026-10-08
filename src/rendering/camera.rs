@@ -21,10 +21,10 @@ pub enum RenderError {
 
 #[derive(Debug, Clone)]
 pub struct Camera {
-    pub hsize: usize,
-    pub vsize: usize,
-    pub field_of_view: f64,
-    pub transform: Transform,
+    hsize: usize,
+    vsize: usize,
+    field_of_view: f64,
+    transform: Transform,
     pixel_size: f64,
     half_width: f64,
     half_height: f64,
@@ -50,6 +50,22 @@ impl Camera {
             half_width,
             half_height,
         }
+    }
+
+    pub fn dimensions(&self) -> (usize, usize) {
+        (self.hsize, self.vsize)
+    }
+
+    pub fn field_of_view(&self) -> f64 {
+        self.field_of_view
+    }
+
+    pub fn transform(&self) -> &Transform {
+        &self.transform
+    }
+
+    pub fn set_transform(&mut self, transform: Transform) {
+        self.transform = transform;
     }
 
     pub fn ray_for_pixel(&self, px: usize, py: usize) -> Result<Ray, TransformError> {
@@ -174,7 +190,7 @@ mod tests {
         let camera = Camera::new(11, 11, std::f64::consts::PI / 2.0, transform);
         let image = camera.render(&world).unwrap();
 
-        let pixel_color = image.pixels[5 * image.width + 5];
+        let pixel_color = image.pixel_at(5, 5).unwrap();
         assert_abs_diff_eq!(pixel_color.r(), 0.38066, epsilon = 1e-5);
         assert_abs_diff_eq!(pixel_color.g(), 0.47583, epsilon = 1e-5);
         assert_abs_diff_eq!(pixel_color.b(), 0.2855, epsilon = 1e-5);

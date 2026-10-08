@@ -10,9 +10,9 @@ fn main() -> Result<()> {
 
     let white = Color::new(1.0, 1.0, 1.0);
     let mut canvas = Canvas::new(512, 512);
-    let center_trans =
-        Translation3::new(canvas.width as f64 / 2.0, canvas.height as f64 / 2.0, 0.0);
-    let radius = canvas.width.min(canvas.height) as f64 * SCALE_FACTOR;
+    let (width, height) = canvas.dimensions();
+    let center_trans = Translation3::new(width as f64 / 2.0, height as f64 / 2.0, 0.0);
+    let radius = width.min(height) as f64 * SCALE_FACTOR;
     let scale = Scale3::new(radius, radius, 1.0);
     let origin = Point3::new(0.0, 1.0, 0.0);
 

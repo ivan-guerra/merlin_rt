@@ -36,7 +36,7 @@ impl Cylinder {
         }
     }
 
-    pub fn intersect_caps(&self, ray: &Ray) -> Result<Vec<Intersection<'_>>, TransformError> {
+    fn intersect_caps(&self, ray: &Ray) -> Result<Vec<Intersection<'_>>, TransformError> {
         let mut xs = vec![];
 
         if !self.closed || abs_diff_eq!(ray.direction.y, 0.0) {

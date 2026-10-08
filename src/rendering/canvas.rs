@@ -99,9 +99,9 @@ impl Mul<Color> for f64 {
 
 #[derive(Debug)]
 pub struct Canvas {
-    pub width: usize,
-    pub height: usize,
-    pub pixels: Vec<Color>,
+    width: usize,
+    height: usize,
+    pixels: Vec<Color>,
 }
 
 impl Canvas {
@@ -112,6 +112,14 @@ impl Canvas {
             height,
             pixels,
         }
+    }
+
+    pub fn dimensions(&self) -> (usize, usize) {
+        (self.width, self.height)
+    }
+
+    pub fn pixel_at(&self, x: usize, y: usize) -> Option<&Color> {
+        (x < self.width && y < self.height).then(|| &self.pixels[y * self.width + x])
     }
 
     pub fn write_pixel(&mut self, x: usize, y: usize, color: Color) -> Result<(), CanvasError> {

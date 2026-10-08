@@ -20,10 +20,11 @@ fn tick(env: &Environment, proj: &Projectile, canvas: &mut Canvas) -> Result<Pro
     let projectile_color = Color::new(0.0, 1.0, 0.0);
     let position = proj.position + proj.velocity;
     let velocity = proj.velocity + env.gravity + env.wind;
+    let (width, height) = canvas.dimensions();
     let x = position.x as usize;
-    let y = canvas.height.saturating_sub(position.y as usize);
+    let y = height.saturating_sub(position.y as usize);
 
-    if x < canvas.width && y < canvas.height {
+    if x < width && y < height {
         canvas.write_pixel(x, y, projectile_color)?;
     }
 
