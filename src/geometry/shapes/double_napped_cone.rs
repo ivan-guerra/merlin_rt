@@ -1,10 +1,14 @@
 use crate::{
-    canvas::Color,
-    light::{Lighting, PointLight},
-    material::Material,
-    ray::Ray,
-    shapes::{Intersection, Shape},
-    transforms::{Transform, TransformError},
+    geometry::{
+        ray::Ray,
+        shapes::{Intersection, Shape},
+        transforms::{Transform, TransformError},
+    },
+    rendering::canvas::Color,
+    scene::{
+        light::{Lighting, PointLight},
+        material::Material,
+    },
 };
 
 use approx::abs_diff_eq;

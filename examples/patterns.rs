@@ -1,13 +1,16 @@
 use anyhow::Result;
 use merlin_rt::{
-    camera::Camera,
-    canvas::Color,
-    light::PointLight,
-    material::Material,
-    pattern::{CheckerPattern, GradientPattern, StripePattern},
-    shapes::{Plane, Sphere},
-    transforms::{Axis, Transform},
-    world::World,
+    geometry::{
+        shapes::{Plane, Sphere},
+        transforms::{Axis, Transform},
+    },
+    rendering::{camera::Camera, canvas::Color},
+    scene::{
+        light::PointLight,
+        material::Material,
+        pattern::{CheckerPattern, GradientPattern, StripePattern},
+        world::World,
+    },
 };
 use nalgebra::{Point3, Scale3, Translation3, Vector3};
 use std::path::Path;

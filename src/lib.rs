@@ -1,9 +1,3 @@
-pub mod camera;
-pub mod canvas;
-pub mod light;
-pub mod material;
-pub mod pattern;
-pub mod ray;
-pub mod shapes;
-pub mod transforms;
-pub mod world;
+pub mod geometry;
+pub mod rendering;
+pub mod scene;

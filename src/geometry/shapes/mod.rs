@@ -11,10 +11,11 @@ pub use plane::Plane;
 pub use sphere::Sphere;
 
 use crate::{
-    light::Lighting,
-    material::Material,
-    ray::Ray,
-    transforms::{Transform, TransformError},
+    geometry::{
+        ray::Ray,
+        transforms::{Transform, TransformError},
+    },
+    scene::{light::Lighting, material::Material},
 };
 use nalgebra::{Point3, Vector3};
 use std::fmt::Debug;

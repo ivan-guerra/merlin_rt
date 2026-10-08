@@ -1,10 +1,14 @@
 use crate::{
-    canvas::Color,
-    light::{Lighting, PointLight},
-    material::Material,
-    ray::Ray,
-    shapes::{Intersection, Shape},
-    transforms::{Transform, TransformError},
+    geometry::{
+        ray::Ray,
+        shapes::{Intersection, Shape},
+        transforms::{Transform, TransformError},
+    },
+    rendering::canvas::Color,
+    scene::{
+        light::{Lighting, PointLight},
+        material::Material,
+    },
 };
 
 use nalgebra::{Point3, Vector3};
@@ -382,7 +386,10 @@ mod test {
     fn test_computing_normal_on_transformed_sphere() {
         let sphere = Sphere {
             transform: Transform::sequence([
-                Transform::rotation(crate::transforms::Axis::Z, std::f64::consts::PI / 5.0),
+                Transform::rotation(
+                    crate::geometry::transforms::Axis::Z,
+                    std::f64::consts::PI / 5.0,
+                ),
                 Transform::scale(Scale3::new(1.0, 0.5, 1.0)),
             ]),
             ..Default::default()

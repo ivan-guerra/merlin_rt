@@ -1,6 +1,6 @@
 use crate::{
-    canvas::Color,
-    transforms::{Transform, TransformError},
+    geometry::transforms::{Transform, TransformError},
+    rendering::canvas::Color,
 };
 
 use nalgebra::Point3;

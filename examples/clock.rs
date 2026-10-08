@@ -1,4 +1,4 @@
-use merlin_rt::canvas::{Canvas, Color};
+use merlin_rt::rendering::canvas::{Canvas, Color};
 
 use anyhow::Result;
 use nalgebra::{Point3, Rotation3, Scale3, Translation3, Vector3};

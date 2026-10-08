@@ -1,11 +1,10 @@
 use merlin_rt::{
-    camera::Camera,
-    canvas::Color,
-    light::PointLight,
-    material::Material,
-    shapes::{Plane, Sphere},
-    transforms::Transform,
-    world::World,
+    geometry::{
+        shapes::{Plane, Sphere},
+        transforms::Transform,
+    },
+    rendering::{camera::Camera, canvas::Color},
+    scene::{light::PointLight, material::Material, world::World},
 };
 
 use anyhow::Result;

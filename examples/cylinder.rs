@@ -1,12 +1,11 @@
 use anyhow::Result;
 use merlin_rt::{
-    camera::Camera,
-    canvas::Color,
-    light::PointLight,
-    material::Material,
-    shapes::{Cylinder, Plane},
-    transforms::Transform,
-    world::World,
+    geometry::{
+        shapes::{Cylinder, Plane},
+        transforms::Transform,
+    },
+    rendering::{camera::Camera, canvas::Color},
+    scene::{light::PointLight, material::Material, world::World},
 };
 use nalgebra::{Point3, Scale3, Translation3, Vector3};
 use std::path::Path;

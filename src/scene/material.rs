@@ -1,4 +1,4 @@
-use crate::{canvas::Color, pattern::Pattern};
+use crate::{rendering::canvas::Color, scene::pattern::Pattern};
 
 #[derive(Debug)]
 pub struct Material {

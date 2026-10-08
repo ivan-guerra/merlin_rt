@@ -1,4 +1,4 @@
-use crate::{canvas::Color, transforms::TransformError};
+use crate::{geometry::transforms::TransformError, rendering::canvas::Color};
 
 use nalgebra::{Point3, Vector3};
 

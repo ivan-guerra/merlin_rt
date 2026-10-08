@@ -1,8 +1,10 @@
 use crate::{
-    canvas::{Canvas, CanvasError},
-    ray::Ray,
-    transforms::{Transform, TransformError},
-    world::{MAX_RECURSION_DEPTH, World},
+    geometry::{
+        ray::Ray,
+        transforms::{Transform, TransformError},
+    },
+    rendering::canvas::{Canvas, CanvasError},
+    scene::world::{MAX_RECURSION_DEPTH, World},
 };
 
 use nalgebra::Point3;
@@ -86,7 +88,7 @@ mod tests {
     use core::f64;
 
     use super::*;
-    use crate::{transforms::Axis, world::World};
+    use crate::{geometry::transforms::Axis, scene::world::World};
     use approx::assert_abs_diff_eq;
     use nalgebra::{Translation3, Vector3};
 

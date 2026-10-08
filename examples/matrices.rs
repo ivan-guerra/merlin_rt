@@ -1,4 +1,4 @@
-use merlin_rt::transforms::{Axis, Transform};
+use merlin_rt::geometry::transforms::{Axis, Transform};
 
 use anyhow::Result;
 use nalgebra::{Point3, Scale3, Translation3, Vector3};

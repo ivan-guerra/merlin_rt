@@ -1,10 +1,11 @@
 use crate::{
-    canvas::Color,
-    light::PointLight,
-    material::Material,
-    ray::Ray,
-    shapes::{Intersection, Plane, Shape, Sphere},
-    transforms::{Transform, TransformError},
+    geometry::{
+        ray::Ray,
+        shapes::{Intersection, Plane, Shape, Sphere},
+        transforms::{Transform, TransformError},
+    },
+    rendering::canvas::Color,
+    scene::{light::PointLight, material::Material},
 };
 
 use nalgebra::{Matrix4, Point3, Scale3, Translation3, Vector3};
@@ -153,12 +154,12 @@ impl Default for World {
     fn default() -> Self {
         let light = PointLight::new(
             Point3::new(-10.0, 10.0, -10.0),
-            crate::canvas::Color::new(1.0, 1.0, 1.0),
+            crate::rendering::canvas::Color::new(1.0, 1.0, 1.0),
         );
 
         let sphere1 = Sphere {
             material: Material {
-                color: crate::canvas::Color::new(0.8, 1.0, 0.6),
+                color: crate::rendering::canvas::Color::new(0.8, 1.0, 0.6),
                 diffuse: 0.7,
                 specular: 0.2,
                 ..Default::default()
@@ -298,6 +299,7 @@ impl Computations<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rendering::canvas::Color;
     use approx::assert_abs_diff_eq;
 
     fn glass_sphere() -> Sphere {
@@ -310,7 +312,7 @@ mod tests {
     #[derive(Debug)]
     struct TestPattern;
 
-    impl crate::pattern::Pattern for TestPattern {
+    impl crate::scene::pattern::Pattern for TestPattern {
         fn pattern_at(&self, point: Point3<f64>) -> Color {
             Color::new(point.x, point.y, point.z)
         }
@@ -330,10 +332,7 @@ mod tests {
         let world = World::default();
 
         assert_eq!(world.light.position, Point3::new(-10.0, 10.0, -10.0));
-        assert_eq!(
-            world.light.intensity,
-            crate::canvas::Color::new(1.0, 1.0, 1.0)
-        );
+        assert_eq!(world.light.intensity, Color::new(1.0, 1.0, 1.0));
         assert_eq!(world.objects.len(), 3);
     }
 
@@ -403,10 +402,7 @@ mod tests {
     #[test]
     fn test_shading_an_intersection_from_the_inside() {
         let world = World {
-            light: PointLight::new(
-                Point3::new(0.0, 0.25, 0.0),
-                crate::canvas::Color::new(1.0, 1.0, 1.0),
-            ),
+            light: PointLight::new(Point3::new(0.0, 0.25, 0.0), Color::new(1.0, 1.0, 1.0)),
             ..Default::default()
         };
         let ray = Ray::new(Point3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 1.0));
@@ -529,10 +525,7 @@ mod tests {
     #[test]
     fn test_shade_hit_is_given_an_intersection_in_shadow() {
         let mut world = World::default();
-        let light = PointLight::new(
-            Point3::new(0.0, 0.0, -10.0),
-            crate::canvas::Color::new(1.0, 1.0, 1.0),
-        );
+        let light = PointLight::new(Point3::new(0.0, 0.0, -10.0), Color::new(1.0, 1.0, 1.0));
         world.light = light;
         let sphere2 = world.objects[1].as_ref();
         let ray = Ray::new(Point3::new(0.0, 0.0, 5.0), Vector3::new(0.0, 0.0, 1.0));

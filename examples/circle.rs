@@ -1,9 +1,11 @@
 use merlin_rt::{
-    canvas::{Canvas, Color},
-    material::Material,
-    ray::Ray,
-    shapes::{Intersection, Shape, Sphere},
-    transforms::{Axis, Transform},
+    geometry::{
+        ray::Ray,
+        shapes::{Intersection, Shape, Sphere},
+        transforms::{Axis, Transform},
+    },
+    rendering::canvas::{Canvas, Color},
+    scene::material::Material,
 };
 
 use anyhow::Result;

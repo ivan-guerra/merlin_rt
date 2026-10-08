@@ -1,4 +1,4 @@
-use crate::transforms::Transform;
+use crate::geometry::transforms::Transform;
 
 use nalgebra::{Point3, Vector3};
 
@@ -28,7 +28,7 @@ impl Ray {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transforms::Axis;
+    use crate::geometry::transforms::Axis;
     use approx::assert_abs_diff_eq;
     use nalgebra::{Point3, Scale3, Translation3, Vector3};
 
