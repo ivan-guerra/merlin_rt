@@ -1,6 +1,8 @@
 pub mod camera;
 pub mod canvas;
 pub mod cube;
+pub mod cylinder;
+pub mod double_napped_cone;
 pub mod light;
 pub mod material;
 pub mod pattern;
