@@ -1,19 +1,19 @@
 use crate::{
     geometry::{
         ray::Ray,
-        shapes::{Intersection, Shape},
+        shapes::{Intersection, ParentLink, Shape},
         transforms::{Transform, TransformError},
     },
     scene::material::Material,
 };
 
-use approx::abs_diff_eq;
 use nalgebra::{Point3, Vector3};
 
 const EPSILON: f64 = 1e-6;
 
 #[derive(Debug)]
 pub struct DoubleNappedCone {
+    parent: ParentLink,
     minimum: f64,
     maximum: f64,
     closed: bool,
@@ -76,6 +76,7 @@ impl Default for DoubleNappedCone {
             minimum: f64::NEG_INFINITY,
             maximum: f64::INFINITY,
             closed: false,
+            parent: ParentLink::default(),
             transform: Transform::identity(),
             material: Material::default(),
         }
@@ -120,6 +121,10 @@ impl DoubleNappedConeBuilder {
 }
 
 impl Shape for DoubleNappedCone {
+    fn parent_link(&self) -> &ParentLink {
+        &self.parent
+    }
+
     fn transform(&self) -> &Transform {
         &self.transform
     }
@@ -181,7 +186,7 @@ impl Shape for DoubleNappedCone {
     }
 
     fn normal_at(&self, world_point: Point3<f64>) -> Result<Vector3<f64>, TransformError> {
-        let object_point = self.transform.apply_inverse(world_point)?;
+        let object_point = self.world_to_object(world_point)?;
         let distance = object_point.x.powi(2) + object_point.z.powi(2);
 
         let object_normal = if self.closed
@@ -203,13 +208,7 @@ impl Shape for DoubleNappedCone {
                 Vector3::new(object_point.x, y, object_point.z)
             }
         };
-        let world_normal = self.transform.apply_transpose_inverse(object_normal)?;
-
-        if abs_diff_eq!(world_normal.norm(), 0.0) {
-            Ok(world_normal)
-        } else {
-            Ok(world_normal.normalize())
-        }
+        self.normal_to_world(object_normal)
     }
 }
 

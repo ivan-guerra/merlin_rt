@@ -1,7 +1,7 @@
 use crate::{
     geometry::{
         ray::Ray,
-        shapes::{Intersection, Shape},
+        shapes::{Intersection, ParentLink, Shape},
         transforms::{Transform, TransformError},
     },
     scene::material::Material,
@@ -11,6 +11,7 @@ use nalgebra::{Point3, Vector3};
 
 #[derive(Debug, PartialEq)]
 pub struct Plane {
+    parent: ParentLink,
     transform: Transform,
     material: Material,
 }
@@ -24,6 +25,7 @@ impl Plane {
 impl Default for Plane {
     fn default() -> Self {
         Self {
+            parent: ParentLink::default(),
             transform: Transform::identity(),
             material: Material::default(),
         }
@@ -53,6 +55,10 @@ impl PlaneBuilder {
 }
 
 impl Shape for Plane {
+    fn parent_link(&self) -> &ParentLink {
+        &self.parent
+    }
+
     fn transform(&self) -> &Transform {
         &self.transform
     }
@@ -77,10 +83,7 @@ impl Shape for Plane {
     }
 
     fn normal_at(&self, _world_point: Point3<f64>) -> Result<Vector3<f64>, TransformError> {
-        Ok(self
-            .transform
-            .apply_transpose_inverse(Vector3::new(0.0, 1.0, 0.0))?
-            .normalize())
+        self.normal_to_world(Vector3::new(0.0, 1.0, 0.0))
     }
 }
 

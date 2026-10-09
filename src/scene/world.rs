@@ -1,7 +1,7 @@
 use crate::{
     geometry::{
         ray::Ray,
-        shapes::{Intersection, Plane, Shape, Sphere},
+        shapes::{Intersection, Plane, Shape, ShapeRef, Sphere},
         transforms::{Transform, TransformError},
     },
     rendering::canvas::Color,
@@ -9,13 +9,14 @@ use crate::{
 };
 
 use nalgebra::{Matrix4, Point3, Scale3, Translation3, Vector3};
+use std::rc::Rc;
 
 pub const MAX_RECURSION_DEPTH: usize = 5;
 
 #[derive(Debug)]
 pub struct World {
     light: PointLight,
-    objects: Vec<Box<dyn Shape>>,
+    objects: Vec<ShapeRef>,
 }
 
 impl World {
@@ -37,6 +38,12 @@ impl World {
     }
 
     pub fn new(light: PointLight, objects: Vec<Box<dyn Shape>>) -> Self {
+        Self::from_shared(light, objects.into_iter().map(Rc::from).collect())
+    }
+
+    /// Creates a world from shared root shapes, including groups.
+    /// Do not also insert a group's descendants as world roots.
+    pub fn from_shared(light: PointLight, objects: Vec<ShapeRef>) -> Self {
         World { light, objects }
     }
 
@@ -178,7 +185,7 @@ impl Default for World {
 
         World {
             light,
-            objects: vec![Box::new(sphere1), Box::new(sphere2), Box::new(plane)],
+            objects: vec![Rc::new(sphere1), Rc::new(sphere2), Rc::new(plane)],
         }
     }
 }
@@ -434,7 +441,7 @@ mod tests {
     #[test]
     fn test_color_with_an_intersection_behind_the_ray() {
         let mut world = World::default();
-        world.objects[0] = Box::new(
+        world.objects[0] = Rc::new(
             Sphere::builder()
                 .material(Material {
                     color: Color::new(0.8, 1.0, 0.6),
@@ -445,7 +452,7 @@ mod tests {
                 })
                 .build(),
         );
-        world.objects[1] = Box::new(
+        world.objects[1] = Rc::new(
             Sphere::builder()
                 .transform(Transform::scale(Scale3::new(0.5, 0.5, 0.5)))
                 .material(Material {
@@ -560,7 +567,7 @@ mod tests {
         let sphere = Sphere::builder()
             .transform(Transform::translation(Translation3::new(0.0, 0.0, 1.0)))
             .build();
-        world.objects[0] = Box::new(sphere);
+        world.objects[0] = Rc::new(sphere);
         let intersection = Intersection::new(5.0, world.objects[0].as_ref());
         let comps = Computations::prepare_computations(&intersection, &ray, None).unwrap();
 
@@ -614,7 +621,7 @@ mod tests {
             })
             .transform(Transform::translation(Translation3::new(0.0, -1.0, 0.0)))
             .build();
-        world.objects.push(Box::new(plane));
+        world.objects.push(Rc::new(plane));
         let shape = world.objects.last().unwrap().as_ref();
         let ray = Ray::new(
             Point3::new(0.0, 0.0, -3.0),
@@ -641,7 +648,7 @@ mod tests {
             })
             .transform(Transform::translation(Translation3::new(0.0, -1.0, 0.0)))
             .build();
-        world.objects.push(Box::new(plane));
+        world.objects.push(Rc::new(plane));
         let shape = world.objects.last().unwrap().as_ref();
         let ray = Ray::new(
             Point3::new(0.0, 0.0, -3.0),
@@ -668,7 +675,7 @@ mod tests {
             })
             .transform(Transform::translation(Translation3::new(0.0, -1.0, 0.0)))
             .build();
-        world.objects.push(Box::new(plane));
+        world.objects.push(Rc::new(plane));
         let shape = world.objects.last().unwrap().as_ref();
         let ray = Ray::new(
             Point3::new(0.0, 0.0, -3.0),
@@ -793,7 +800,7 @@ mod tests {
     #[test]
     fn test_the_refracted_color_with_a_refracted_ray() {
         let mut world = World::default();
-        world.objects[0] = Box::new(
+        world.objects[0] = Rc::new(
             Sphere::builder()
                 .material(Material {
                     color: Color::new(0.8, 1.0, 0.6),
@@ -805,7 +812,7 @@ mod tests {
                 })
                 .build(),
         );
-        world.objects[1] = Box::new(
+        world.objects[1] = Rc::new(
             glass_sphere_builder(1.5)
                 .transform(Transform::scale(Scale3::new(0.5, 0.5, 0.5)))
                 .build(),
@@ -839,7 +846,7 @@ mod tests {
             })
             .transform(Transform::translation(Translation3::new(0.0, -1.0, 0.0)))
             .build();
-        world.objects.push(Box::new(floor));
+        world.objects.push(Rc::new(floor));
         let ball = Sphere::builder()
             .material(Material {
                 color: Color::new(1.0, 0.0, 0.0),
@@ -848,7 +855,7 @@ mod tests {
             })
             .transform(Transform::translation(Translation3::new(0.0, -3.5, -0.5)))
             .build();
-        world.objects.push(Box::new(ball));
+        world.objects.push(Rc::new(ball));
         let ray = Ray::new(
             Point3::new(0.0, 0.0, -3.0),
             Vector3::new(
@@ -931,7 +938,7 @@ mod tests {
             })
             .transform(Transform::translation(Translation3::new(0.0, -1.0, 0.0)))
             .build();
-        world.objects.push(Box::new(floor));
+        world.objects.push(Rc::new(floor));
         let ball = Sphere::builder()
             .material(Material {
                 color: Color::new(1.0, 0.0, 0.0),
@@ -940,7 +947,7 @@ mod tests {
             })
             .transform(Transform::translation(Translation3::new(0.0, -3.5, -0.5)))
             .build();
-        world.objects.push(Box::new(ball));
+        world.objects.push(Rc::new(ball));
         let ray = Ray::new(
             Point3::new(0.0, 0.0, -3.0),
             Vector3::new(

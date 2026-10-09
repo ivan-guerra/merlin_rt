@@ -1,7 +1,7 @@
 use crate::{
     geometry::{
         ray::Ray,
-        shapes::{Intersection, Shape},
+        shapes::{Intersection, ParentLink, Shape},
         transforms::{Transform, TransformError},
     },
     scene::material::Material,
@@ -32,6 +32,7 @@ fn check_axis(origin: f64, direction: f64) -> (f64, f64) {
 
 #[derive(Debug)]
 pub struct Cube {
+    parent: ParentLink,
     material: Material,
     transform: Transform,
 }
@@ -40,6 +41,7 @@ impl Default for Cube {
     fn default() -> Self {
         Self {
             material: Material::default(),
+            parent: ParentLink::default(),
             transform: Transform::identity(),
         }
     }
@@ -81,6 +83,10 @@ impl CubeBuilder {
 }
 
 impl Shape for Cube {
+    fn parent_link(&self) -> &ParentLink {
+        &self.parent
+    }
+
     fn transform(&self) -> &Transform {
         &self.transform
     }
@@ -113,7 +119,7 @@ impl Shape for Cube {
     }
 
     fn normal_at(&self, world_point: Point3<f64>) -> Result<Vector3<f64>, TransformError> {
-        let object_point = self.transform.apply_inverse(world_point)?;
+        let object_point = self.world_to_object(world_point)?;
         let maxc = object_point
             .x
             .abs()
@@ -128,8 +134,7 @@ impl Shape for Cube {
             Vector3::new(0.0, 0.0, object_point.z)
         };
 
-        let world_normal = self.transform.apply_transpose_inverse(object_normal)?;
-        Ok(world_normal.normalize())
+        self.normal_to_world(object_normal)
     }
 }
 

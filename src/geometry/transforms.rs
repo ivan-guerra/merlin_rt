@@ -5,6 +5,8 @@ use thiserror::Error;
 pub enum TransformError {
     #[error("Failed to invert transformation matrix")]
     MatrixInversionError,
+    #[error("Groups have no surface normal")]
+    UndefinedNormal,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

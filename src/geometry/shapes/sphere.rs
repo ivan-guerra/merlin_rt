@@ -1,7 +1,7 @@
 use crate::{
     geometry::{
         ray::Ray,
-        shapes::{Intersection, Shape},
+        shapes::{Intersection, ParentLink, Shape},
         transforms::{Transform, TransformError},
     },
     scene::material::Material,
@@ -12,6 +12,7 @@ use uuid::Uuid;
 
 #[derive(Debug, PartialEq)]
 pub struct Sphere {
+    parent: ParentLink,
     id: Uuid,
     radius: f64,
     center: Point3<f64>,
@@ -40,6 +41,7 @@ impl Default for Sphere {
             id: Uuid::new_v4(),
             radius: 1.0,
             center: Point3::new(0.0, 0.0, 0.0),
+            parent: ParentLink::default(),
             transform: Transform::identity(),
             material: Material::default(),
         }
@@ -79,6 +81,10 @@ impl SphereBuilder {
 }
 
 impl Shape for Sphere {
+    fn parent_link(&self) -> &ParentLink {
+        &self.parent
+    }
+
     fn transform(&self) -> &Transform {
         &self.transform
     }
@@ -112,10 +118,9 @@ impl Shape for Sphere {
     }
 
     fn normal_at(&self, world_point: Point3<f64>) -> Result<Vector3<f64>, TransformError> {
-        let object_point = self.transform.apply_inverse(world_point)?;
+        let object_point = self.world_to_object(world_point)?;
         let object_normal = (object_point - self.center) / self.radius;
-        let world_normal = self.transform.apply_transpose_inverse(object_normal)?;
-        Ok(world_normal.normalize())
+        self.normal_to_world(object_normal)
     }
 }
 

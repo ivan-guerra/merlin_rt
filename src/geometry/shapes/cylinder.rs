@@ -1,7 +1,7 @@
 use crate::{
     geometry::{
         ray::Ray,
-        shapes::{Intersection, Shape},
+        shapes::{Intersection, ParentLink, Shape},
         transforms::{Transform, TransformError},
     },
     scene::material::Material,
@@ -12,6 +12,7 @@ use nalgebra::{Point3, Vector3};
 
 #[derive(Debug)]
 pub struct Cylinder {
+    parent: ParentLink,
     minimum: f64,
     maximum: f64,
     closed: bool,
@@ -73,6 +74,7 @@ impl Default for Cylinder {
             minimum: f64::NEG_INFINITY,
             maximum: f64::INFINITY,
             closed: false,
+            parent: ParentLink::default(),
             transform: Transform::identity(),
             material: Material::default(),
         }
@@ -117,6 +119,10 @@ impl CylinderBuilder {
 }
 
 impl Shape for Cylinder {
+    fn parent_link(&self) -> &ParentLink {
+        &self.parent
+    }
+
     fn transform(&self) -> &Transform {
         &self.transform
     }
@@ -169,24 +175,17 @@ impl Shape for Cylinder {
     }
 
     fn normal_at(&self, world_point: Point3<f64>) -> Result<Vector3<f64>, TransformError> {
-        let object_point = self.transform().apply_inverse(world_point)?;
+        let object_point = self.world_to_object(world_point)?;
         let dist = object_point.x.powi(2) + object_point.z.powi(2);
         const EPSILON: f64 = 1e-6;
 
         if dist < 1.0 && object_point.y >= self.maximum - EPSILON {
-            Ok(self
-                .transform()
-                .apply_transpose_inverse(Vector3::new(0.0, 1.0, 0.0))?
-                .normalize())
+            self.normal_to_world(Vector3::new(0.0, 1.0, 0.0))
         } else if dist < 1.0 && object_point.y <= self.minimum + EPSILON {
-            Ok(self
-                .transform()
-                .apply_transpose_inverse(Vector3::new(0.0, -1.0, 0.0))?
-                .normalize())
+            self.normal_to_world(Vector3::new(0.0, -1.0, 0.0))
         } else {
             let object_normal = Vector3::new(object_point.x, 0.0, object_point.z);
-            let world_normal = self.transform().apply_transpose_inverse(object_normal)?;
-            Ok(world_normal.normalize())
+            self.normal_to_world(object_normal)
         }
     }
 }
