@@ -32,8 +32,8 @@ fn check_axis(origin: f64, direction: f64) -> (f64, f64) {
 
 #[derive(Debug)]
 pub struct Cube {
-    pub material: Material,
-    pub transform: Transform,
+    material: Material,
+    transform: Transform,
 }
 
 impl Default for Cube {
@@ -46,11 +46,37 @@ impl Default for Cube {
 }
 
 impl Cube {
+    pub fn builder() -> CubeBuilder {
+        CubeBuilder::default()
+    }
+
     pub fn new(material: Material, transform: Transform) -> Self {
-        Self {
-            material,
-            transform,
-        }
+        Self::builder()
+            .transform(transform)
+            .material(material)
+            .build()
+    }
+}
+
+#[derive(Debug, Default)]
+#[must_use = "call build() to create the shape"]
+pub struct CubeBuilder {
+    shape: Cube,
+}
+
+impl CubeBuilder {
+    pub fn transform(mut self, transform: Transform) -> Self {
+        self.shape.transform = transform;
+        self
+    }
+
+    pub fn material(mut self, material: Material) -> Self {
+        self.shape.material = material;
+        self
+    }
+
+    pub fn build(self) -> Cube {
+        self.shape
     }
 }
 
@@ -61,10 +87,6 @@ impl Shape for Cube {
 
     fn material(&self) -> &Material {
         &self.material
-    }
-
-    fn material_mut(&mut self) -> &mut Material {
-        &mut self.material
     }
 
     fn intersect(&self, ray: &Ray) -> Result<Vec<Intersection<'_>>, TransformError> {

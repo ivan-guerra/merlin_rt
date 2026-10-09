@@ -2,7 +2,6 @@ use merlin_rt::{
     geometry::{
         ray::Ray,
         shapes::{Intersection, Shape, Sphere},
-        transforms::Transform,
     },
     rendering::canvas::{Canvas, Color},
     scene::{light::PointLight, material::Material},
@@ -18,15 +17,12 @@ fn main() -> Result<()> {
     const WALL_Z: f64 = 10.0;
 
     let mut canvas = Canvas::new(CANVAS_PIXELS, CANVAS_PIXELS);
-    let sphere = Sphere::new(
-        1.0,
-        Point3::origin(),
-        Transform::identity(),
-        Material {
+    let sphere = Sphere::builder()
+        .material(Material {
             color: Color::new(1.0, 0.2, 1.0),
             ..Default::default()
-        },
-    );
+        })
+        .build();
     let light = PointLight::new(Point3::new(-10.0, 10.0, -10.0), Color::new(1.0, 1.0, 1.0));
     let ray_origin = Point3::new(0.0, 0.0, -5.0);
     let pixel_size = WALL_SIZE / CANVAS_PIXELS as f64;

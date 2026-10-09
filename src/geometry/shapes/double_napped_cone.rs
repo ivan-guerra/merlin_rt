@@ -14,14 +14,18 @@ const EPSILON: f64 = 1e-6;
 
 #[derive(Debug)]
 pub struct DoubleNappedCone {
-    pub minimum: f64,
-    pub maximum: f64,
-    pub closed: bool,
-    pub transform: Transform,
-    pub material: Material,
+    minimum: f64,
+    maximum: f64,
+    closed: bool,
+    transform: Transform,
+    material: Material,
 }
 
 impl DoubleNappedCone {
+    pub fn builder() -> DoubleNappedConeBuilder {
+        DoubleNappedConeBuilder::default()
+    }
+
     pub fn new(
         minimum: f64,
         maximum: f64,
@@ -29,13 +33,13 @@ impl DoubleNappedCone {
         transform: Transform,
         material: Material,
     ) -> Self {
-        Self {
-            minimum,
-            maximum,
-            closed,
-            transform,
-            material,
-        }
+        Self::builder()
+            .minimum(minimum)
+            .maximum(maximum)
+            .closed(closed)
+            .transform(transform)
+            .material(material)
+            .build()
     }
 
     fn check_cap(&self, ray: &Ray, t: f64, radius: f64) -> bool {
@@ -78,6 +82,43 @@ impl Default for DoubleNappedCone {
     }
 }
 
+#[derive(Debug, Default)]
+#[must_use = "call build() to create the shape"]
+pub struct DoubleNappedConeBuilder {
+    shape: DoubleNappedCone,
+}
+
+impl DoubleNappedConeBuilder {
+    pub fn minimum(mut self, minimum: f64) -> Self {
+        self.shape.minimum = minimum;
+        self
+    }
+
+    pub fn maximum(mut self, maximum: f64) -> Self {
+        self.shape.maximum = maximum;
+        self
+    }
+
+    pub fn closed(mut self, closed: bool) -> Self {
+        self.shape.closed = closed;
+        self
+    }
+
+    pub fn transform(mut self, transform: Transform) -> Self {
+        self.shape.transform = transform;
+        self
+    }
+
+    pub fn material(mut self, material: Material) -> Self {
+        self.shape.material = material;
+        self
+    }
+
+    pub fn build(self) -> DoubleNappedCone {
+        self.shape
+    }
+}
+
 impl Shape for DoubleNappedCone {
     fn transform(&self) -> &Transform {
         &self.transform
@@ -85,10 +126,6 @@ impl Shape for DoubleNappedCone {
 
     fn material(&self) -> &Material {
         &self.material
-    }
-
-    fn material_mut(&mut self) -> &mut Material {
-        &mut self.material
     }
 
     fn intersect(&self, ray: &Ray) -> Result<Vec<Intersection<'_>>, TransformError> {
@@ -220,12 +257,11 @@ mod tests {
 
     #[test]
     fn test_intersecting_a_cone_end_caps() {
-        let cone = DoubleNappedCone {
-            minimum: -0.5,
-            maximum: 0.5,
-            closed: true,
-            ..Default::default()
-        };
+        let cone = DoubleNappedCone::builder()
+            .minimum(-0.5)
+            .maximum(0.5)
+            .closed(true)
+            .build();
 
         let rays = [
             Ray::new(Point3::new(0.0, 0.0, -5.0), Vector3::new(0.0, 1.0, 0.0)),

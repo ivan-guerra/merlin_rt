@@ -12,22 +12,25 @@ use uuid::Uuid;
 
 #[derive(Debug, PartialEq)]
 pub struct Sphere {
-    pub id: Uuid,
-    pub radius: f64,
-    pub center: Point3<f64>,
-    pub transform: Transform,
-    pub material: Material,
+    id: Uuid,
+    radius: f64,
+    center: Point3<f64>,
+    transform: Transform,
+    material: Material,
 }
 
 impl Sphere {
+    pub fn builder() -> SphereBuilder {
+        SphereBuilder::default()
+    }
+
     pub fn new(radius: f64, center: Point3<f64>, transform: Transform, material: Material) -> Self {
-        Sphere {
-            id: Uuid::new_v4(),
-            radius,
-            center,
-            transform,
-            material,
-        }
+        Self::builder()
+            .radius(radius)
+            .center(center)
+            .transform(transform)
+            .material(material)
+            .build()
     }
 }
 
@@ -43,6 +46,38 @@ impl Default for Sphere {
     }
 }
 
+#[derive(Debug, Default)]
+#[must_use = "call build() to create the shape"]
+pub struct SphereBuilder {
+    shape: Sphere,
+}
+
+impl SphereBuilder {
+    pub fn radius(mut self, radius: f64) -> Self {
+        self.shape.radius = radius;
+        self
+    }
+
+    pub fn center(mut self, center: Point3<f64>) -> Self {
+        self.shape.center = center;
+        self
+    }
+
+    pub fn transform(mut self, transform: Transform) -> Self {
+        self.shape.transform = transform;
+        self
+    }
+
+    pub fn material(mut self, material: Material) -> Self {
+        self.shape.material = material;
+        self
+    }
+
+    pub fn build(self) -> Sphere {
+        self.shape
+    }
+}
+
 impl Shape for Sphere {
     fn transform(&self) -> &Transform {
         &self.transform
@@ -50,10 +85,6 @@ impl Shape for Sphere {
 
     fn material(&self) -> &Material {
         &self.material
-    }
-
-    fn material_mut(&mut self) -> &mut Material {
-        &mut self.material
     }
 
     fn intersect(&self, ray: &Ray) -> Result<Vec<Intersection<'_>>, TransformError> {
@@ -232,10 +263,9 @@ mod test {
 
     #[test]
     fn test_changing_sphere_transformation() {
-        let sphere = Sphere {
-            transform: Transform::translation(Translation3::new(2.0, 3.0, 4.0)),
-            ..Default::default()
-        };
+        let sphere = Sphere::builder()
+            .transform(Transform::translation(Translation3::new(2.0, 3.0, 4.0)))
+            .build();
 
         assert_eq!(
             sphere.transform,
@@ -246,10 +276,9 @@ mod test {
     #[test]
     fn test_intersecting_scaled_sphere_with_ray() {
         let ray = Ray::new(Point3::new(0.0, 0.0, -5.0), Vector3::new(0.0, 0.0, 1.0));
-        let sphere = Sphere {
-            transform: Transform::scale(Scale3::new(2.0, 2.0, 2.0)),
-            ..Default::default()
-        };
+        let sphere = Sphere::builder()
+            .transform(Transform::scale(Scale3::new(2.0, 2.0, 2.0)))
+            .build();
         let intersections = sphere.intersect(&ray).unwrap();
 
         assert_eq!(intersections.len(), 2);
@@ -260,10 +289,9 @@ mod test {
     #[test]
     fn test_intersecting_translated_sphere_with_ray() {
         let ray = Ray::new(Point3::new(0.0, 0.0, -5.0), Vector3::new(0.0, 0.0, 1.0));
-        let sphere = Sphere {
-            transform: Transform::translation(Translation3::new(5.0, 0.0, 0.0)),
-            ..Default::default()
-        };
+        let sphere = Sphere::builder()
+            .transform(Transform::translation(Translation3::new(5.0, 0.0, 0.0)))
+            .build();
         let intersections = sphere.intersect(&ray).unwrap();
 
         assert!(intersections.is_empty());
@@ -320,10 +348,9 @@ mod test {
 
     #[test]
     fn test_computing_normal_on_translated_sphere() {
-        let sphere = Sphere {
-            transform: Transform::translation(Translation3::new(0.0, 1.0, 0.0)),
-            ..Default::default()
-        };
+        let sphere = Sphere::builder()
+            .transform(Transform::translation(Translation3::new(0.0, 1.0, 0.0)))
+            .build();
         let normal = sphere
             .normal_at(Point3::new(0.0, 1.70711, -std::f64::consts::FRAC_1_SQRT_2))
             .unwrap();
@@ -337,16 +364,15 @@ mod test {
 
     #[test]
     fn test_computing_normal_on_transformed_sphere() {
-        let sphere = Sphere {
-            transform: Transform::sequence([
+        let sphere = Sphere::builder()
+            .transform(Transform::sequence([
                 Transform::rotation(
                     crate::geometry::transforms::Axis::Z,
                     std::f64::consts::PI / 5.0,
                 ),
                 Transform::scale(Scale3::new(1.0, 0.5, 1.0)),
-            ]),
-            ..Default::default()
-        };
+            ]))
+            .build();
         let normal = sphere
             .normal_at(Point3::new(0.0, 2f64.sqrt() / 2.0, -2f64.sqrt() / 2.0))
             .unwrap();
@@ -368,12 +394,11 @@ mod test {
 
     #[test]
     fn test_sphere_can_be_assigned_a_material() {
-        let mut sphere = Sphere::default();
         let material = Material {
             ambient: 1.0,
             ..Default::default()
         };
-        sphere.material = material;
+        let sphere = Sphere::builder().material(material).build();
 
         assert_abs_diff_eq!(sphere.material.ambient, 1.0);
     }

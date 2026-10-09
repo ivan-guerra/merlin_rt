@@ -11,22 +11,22 @@ use nalgebra::{Point3, Scale3, Translation3, Vector3};
 use std::path::Path;
 
 fn main() -> Result<()> {
-    let cylinder = Cylinder {
-        minimum: -1.5,
-        maximum: 1.5,
-        closed: true,
-        material: Material {
+    let cylinder = Cylinder::builder()
+        .minimum(-1.5)
+        .maximum(1.5)
+        .closed(true)
+        .material(Material {
             color: Color::new(0.15, 0.55, 0.85),
             diffuse: 0.7,
             specular: 0.3,
             shininess: 100.0,
             ..Default::default()
-        },
-        transform: Transform::scale(Scale3::new(1.0, 1.5, 1.0)),
-    };
+        })
+        .transform(Transform::scale(Scale3::new(1.0, 1.5, 1.0)))
+        .build();
 
-    let floor = Plane {
-        material: Material {
+    let floor = Plane::builder()
+        .material(Material {
             color: Color::new(1.0, 1.0, 1.0),
             ambient: 0.15,
             diffuse: 0.7,
@@ -34,9 +34,9 @@ fn main() -> Result<()> {
             shininess: 75.0,
             reflective: 0.15,
             ..Default::default()
-        },
-        transform: Transform::translation(Translation3::new(0.0, -1.5, 0.0)),
-    };
+        })
+        .transform(Transform::translation(Translation3::new(0.0, -1.5, 0.0)))
+        .build();
 
     let world = World::new(
         PointLight::new(Point3::new(-5.0, 6.0, -8.0), Color::new(1.0, 1.0, 1.0)),

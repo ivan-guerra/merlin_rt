@@ -4,11 +4,11 @@ mod double_napped_cone;
 mod plane;
 mod sphere;
 
-pub use cube::Cube;
-pub use cylinder::Cylinder;
-pub use double_napped_cone::DoubleNappedCone;
-pub use plane::Plane;
-pub use sphere::Sphere;
+pub use cube::{Cube, CubeBuilder};
+pub use cylinder::{Cylinder, CylinderBuilder};
+pub use double_napped_cone::{DoubleNappedCone, DoubleNappedConeBuilder};
+pub use plane::{Plane, PlaneBuilder};
+pub use sphere::{Sphere, SphereBuilder};
 
 use crate::{
     geometry::{
@@ -24,7 +24,6 @@ use std::fmt::Debug;
 pub trait Shape: Debug {
     fn transform(&self) -> &Transform;
     fn material(&self) -> &Material;
-    fn material_mut(&mut self) -> &mut Material;
     fn intersect(&self, ray: &Ray) -> Result<Vec<Intersection<'_>>, TransformError>;
     fn normal_at(&self, world_point: Point3<f64>) -> Result<Vector3<f64>, TransformError>;
     fn lighting(

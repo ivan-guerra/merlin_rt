@@ -12,14 +12,18 @@ use nalgebra::{Point3, Vector3};
 
 #[derive(Debug)]
 pub struct Cylinder {
-    pub minimum: f64,
-    pub maximum: f64,
-    pub closed: bool,
-    pub transform: Transform,
-    pub material: Material,
+    minimum: f64,
+    maximum: f64,
+    closed: bool,
+    transform: Transform,
+    material: Material,
 }
 
 impl Cylinder {
+    pub fn builder() -> CylinderBuilder {
+        CylinderBuilder::default()
+    }
+
     pub fn new(
         minimum: f64,
         maximum: f64,
@@ -27,13 +31,13 @@ impl Cylinder {
         transform: Transform,
         material: Material,
     ) -> Self {
-        Self {
-            minimum,
-            maximum,
-            closed,
-            transform,
-            material,
-        }
+        Self::builder()
+            .minimum(minimum)
+            .maximum(maximum)
+            .closed(closed)
+            .transform(transform)
+            .material(material)
+            .build()
     }
 
     fn intersect_caps(&self, ray: &Ray) -> Result<Vec<Intersection<'_>>, TransformError> {
@@ -75,6 +79,43 @@ impl Default for Cylinder {
     }
 }
 
+#[derive(Debug, Default)]
+#[must_use = "call build() to create the shape"]
+pub struct CylinderBuilder {
+    shape: Cylinder,
+}
+
+impl CylinderBuilder {
+    pub fn minimum(mut self, minimum: f64) -> Self {
+        self.shape.minimum = minimum;
+        self
+    }
+
+    pub fn maximum(mut self, maximum: f64) -> Self {
+        self.shape.maximum = maximum;
+        self
+    }
+
+    pub fn closed(mut self, closed: bool) -> Self {
+        self.shape.closed = closed;
+        self
+    }
+
+    pub fn transform(mut self, transform: Transform) -> Self {
+        self.shape.transform = transform;
+        self
+    }
+
+    pub fn material(mut self, material: Material) -> Self {
+        self.shape.material = material;
+        self
+    }
+
+    pub fn build(self) -> Cylinder {
+        self.shape
+    }
+}
+
 impl Shape for Cylinder {
     fn transform(&self) -> &Transform {
         &self.transform
@@ -82,10 +123,6 @@ impl Shape for Cylinder {
 
     fn material(&self) -> &Material {
         &self.material
-    }
-
-    fn material_mut(&mut self) -> &mut Material {
-        &mut self.material
     }
 
     fn intersect(&self, _ray: &Ray) -> Result<Vec<Intersection<'_>>, TransformError> {
@@ -216,11 +253,7 @@ mod tests {
 
     #[test]
     fn test_intersecting_a_constrained_cylinder() {
-        let cyl = Cylinder {
-            minimum: 1.0,
-            maximum: 2.0,
-            ..Default::default()
-        };
+        let cyl = Cylinder::builder().minimum(1.0).maximum(2.0).build();
 
         let rays = [
             Ray::new(
@@ -243,12 +276,11 @@ mod tests {
 
     #[test]
     fn test_intersecting_the_caps_of_a_closed_cylinder() {
-        let cyl = Cylinder {
-            minimum: 1.0,
-            maximum: 2.0,
-            closed: true,
-            ..Default::default()
-        };
+        let cyl = Cylinder::builder()
+            .minimum(1.0)
+            .maximum(2.0)
+            .closed(true)
+            .build();
 
         let rays = [
             Ray::new(Point3::new(0.0, 3.0, 0.0), Vector3::new(0.0, -1.0, 0.0)),
@@ -279,12 +311,11 @@ mod tests {
 
     #[test]
     fn test_the_normal_vector_on_a_cylinder_end_caps() {
-        let cyl = Cylinder {
-            minimum: 1.0,
-            maximum: 2.0,
-            closed: true,
-            ..Default::default()
-        };
+        let cyl = Cylinder::builder()
+            .minimum(1.0)
+            .maximum(2.0)
+            .closed(true)
+            .build();
 
         let points = [
             Point3::new(0.0, 1.0, 0.0),

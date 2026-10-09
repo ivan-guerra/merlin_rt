@@ -5,7 +5,6 @@ use merlin_rt::{
         transforms::{Axis, Transform},
     },
     rendering::canvas::{Canvas, Color},
-    scene::material::Material,
 };
 
 use anyhow::Result;
@@ -18,15 +17,12 @@ fn main() -> Result<()> {
     const WALL_Z: f64 = 10.0;
 
     let mut canvas = Canvas::new(CANVAS_PIXELS, CANVAS_PIXELS);
-    let sphere = Sphere::new(
-        1.0,
-        Point3::origin(),
-        Transform::sequence([
+    let sphere = Sphere::builder()
+        .transform(Transform::sequence([
             Transform::scale(Scale3::new(0.5, 1.0, 1.0)),
             Transform::rotation(Axis::Z, std::f64::consts::FRAC_PI_4),
-        ]),
-        Material::default(),
-    );
+        ]))
+        .build();
     let hit_color = Color::new(1.0, 0.0, 0.0);
     let ray_origin = Point3::new(0.0, 0.0, -5.0);
     let pixel_size = WALL_SIZE / CANVAS_PIXELS as f64;

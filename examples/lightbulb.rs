@@ -11,8 +11,8 @@ use nalgebra::{Point3, Scale3, Translation3, Vector3};
 use std::path::Path;
 
 fn main() -> Result<()> {
-    let bulb = Sphere {
-        material: Material {
+    let bulb = Sphere::builder()
+        .material(Material {
             color: Color::new(1.0, 0.75, 0.25),
             ambient: 0.2,
             diffuse: 0.35,
@@ -20,19 +20,18 @@ fn main() -> Result<()> {
             shininess: 250.0,
             reflective: 0.15,
             ..Default::default()
-        },
-        transform: Transform::sequence([
+        })
+        .transform(Transform::sequence([
             Transform::scale(Scale3::new(1.15, 1.35, 1.15)),
             Transform::translation(Translation3::new(0.0, 1.25, 0.0)),
-        ]),
-        ..Default::default()
-    };
+        ]))
+        .build();
 
-    let neck = Cylinder {
-        minimum: -0.5,
-        maximum: 0.5,
-        closed: true,
-        material: Material {
+    let neck = Cylinder::builder()
+        .minimum(-0.5)
+        .maximum(0.5)
+        .closed(true)
+        .material(Material {
             color: Color::new(1.0, 0.75, 0.25),
             ambient: 0.2,
             diffuse: 0.35,
@@ -40,18 +39,18 @@ fn main() -> Result<()> {
             shininess: 250.0,
             reflective: 0.15,
             ..Default::default()
-        },
-        transform: Transform::sequence([
+        })
+        .transform(Transform::sequence([
             Transform::scale(Scale3::new(0.55, 0.75, 0.55)),
             Transform::translation(Translation3::new(0.0, -0.05, 0.0)),
-        ]),
-    };
+        ]))
+        .build();
 
-    let socket = DoubleNappedCone {
-        minimum: -0.45,
-        maximum: 0.45,
-        closed: true,
-        material: Material {
+    let socket = DoubleNappedCone::builder()
+        .minimum(-0.45)
+        .maximum(0.45)
+        .closed(true)
+        .material(Material {
             color: Color::new(0.3, 0.32, 0.35),
             ambient: 0.1,
             diffuse: 0.55,
@@ -59,18 +58,18 @@ fn main() -> Result<()> {
             shininess: 150.0,
             reflective: 0.35,
             ..Default::default()
-        },
-        transform: Transform::sequence([
+        })
+        .transform(Transform::sequence([
             Transform::scale(Scale3::new(0.9, 0.75, 0.9)),
             Transform::translation(Translation3::new(0.0, -0.85, 0.0)),
-        ]),
-    };
+        ]))
+        .build();
 
-    let base = Cylinder {
-        minimum: -0.35,
-        maximum: 0.35,
-        closed: true,
-        material: Material {
+    let base = Cylinder::builder()
+        .minimum(-0.35)
+        .maximum(0.35)
+        .closed(true)
+        .material(Material {
             color: Color::new(0.08, 0.09, 0.12),
             ambient: 0.1,
             diffuse: 0.5,
@@ -78,15 +77,15 @@ fn main() -> Result<()> {
             shininess: 100.0,
             reflective: 0.25,
             ..Default::default()
-        },
-        transform: Transform::sequence([
+        })
+        .transform(Transform::sequence([
             Transform::scale(Scale3::new(0.65, 0.55, 0.65)),
             Transform::translation(Translation3::new(0.0, -1.55, 0.0)),
-        ]),
-    };
+        ]))
+        .build();
 
-    let floor = Plane {
-        material: Material {
+    let floor = Plane::builder()
+        .material(Material {
             color: Color::new(1.0, 1.0, 1.0),
             ambient: 0.15,
             diffuse: 0.7,
@@ -94,9 +93,9 @@ fn main() -> Result<()> {
             shininess: 75.0,
             reflective: 0.15,
             ..Default::default()
-        },
-        transform: Transform::translation(Translation3::new(0.0, -1.95, 0.0)),
-    };
+        })
+        .transform(Transform::translation(Translation3::new(0.0, -1.95, 0.0)))
+        .build();
 
     let mut objects: Vec<Box<dyn Shape>> = vec![
         Box::new(floor),
@@ -107,24 +106,26 @@ fn main() -> Result<()> {
     ];
 
     for y in [-1.15, -1.4, -1.65] {
-        objects.push(Box::new(Cylinder {
-            minimum: -0.1,
-            maximum: 0.1,
-            closed: true,
-            material: Material {
-                color: Color::new(0.3, 0.32, 0.35),
-                ambient: 0.1,
-                diffuse: 0.55,
-                specular: 0.8,
-                shininess: 150.0,
-                reflective: 0.35,
-                ..Default::default()
-            },
-            transform: Transform::sequence([
-                Transform::scale(Scale3::new(0.78, 0.18, 0.78)),
-                Transform::translation(Translation3::new(0.0, y, 0.0)),
-            ]),
-        }));
+        objects.push(Box::new(
+            Cylinder::builder()
+                .minimum(-0.1)
+                .maximum(0.1)
+                .closed(true)
+                .material(Material {
+                    color: Color::new(0.3, 0.32, 0.35),
+                    ambient: 0.1,
+                    diffuse: 0.55,
+                    specular: 0.8,
+                    shininess: 150.0,
+                    reflective: 0.35,
+                    ..Default::default()
+                })
+                .transform(Transform::sequence([
+                    Transform::scale(Scale3::new(0.78, 0.18, 0.78)),
+                    Transform::translation(Translation3::new(0.0, y, 0.0)),
+                ]))
+                .build(),
+        ));
     }
 
     let world = World::new(

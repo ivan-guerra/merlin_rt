@@ -16,8 +16,8 @@ use nalgebra::{Point3, Scale3, Translation3, Vector3};
 use std::path::Path;
 
 fn main() -> Result<()> {
-    let floor = Plane {
-        material: Material {
+    let floor = Plane::builder()
+        .material(Material {
             ambient: 0.2,
             diffuse: 0.75,
             specular: 0.15,
@@ -27,12 +27,11 @@ fn main() -> Result<()> {
                 transform: Transform::scale(Scale3::new(0.5, 0.5, 0.5)),
             })),
             ..Default::default()
-        },
-        ..Default::default()
-    };
+        })
+        .build();
 
-    let striped_sphere = Sphere {
-        material: Material {
+    let striped_sphere = Sphere::builder()
+        .material(Material {
             ambient: 0.1,
             diffuse: 0.7,
             specular: 0.4,
@@ -43,13 +42,12 @@ fn main() -> Result<()> {
                 transform: Transform::scale(Scale3::new(0.25, 0.25, 0.25)),
             })),
             ..Default::default()
-        },
-        transform: Transform::translation(Translation3::new(-2.1, 1.0, 0.5)),
-        ..Default::default()
-    };
+        })
+        .transform(Transform::translation(Translation3::new(-2.1, 1.0, 0.5)))
+        .build();
 
-    let gradient_wall = Plane {
-        material: Material {
+    let gradient_wall = Plane::builder()
+        .material(Material {
             ambient: 0.25,
             diffuse: 0.65,
             specular: 0.05,
@@ -60,15 +58,15 @@ fn main() -> Result<()> {
                 transform: Transform::scale(Scale3::new(5.0, 1.0, 1.0)),
             })),
             ..Default::default()
-        },
-        transform: Transform::sequence([
+        })
+        .transform(Transform::sequence([
             Transform::rotation(Axis::X, std::f64::consts::FRAC_PI_2),
             Transform::translation(Translation3::new(0.0, 0.0, 4.0)),
-        ]),
-    };
+        ]))
+        .build();
 
-    let checker_sphere = Sphere {
-        material: Material {
+    let checker_sphere = Sphere::builder()
+        .material(Material {
             ambient: 0.1,
             diffuse: 0.7,
             specular: 0.4,
@@ -79,10 +77,9 @@ fn main() -> Result<()> {
                 transform: Transform::scale(Scale3::new(0.35, 0.35, 0.35)),
             })),
             ..Default::default()
-        },
-        transform: Transform::translation(Translation3::new(2.1, 1.0, 0.5)),
-        ..Default::default()
-    };
+        })
+        .transform(Transform::translation(Translation3::new(2.1, 1.0, 0.5)))
+        .build();
 
     let world = World::new(
         PointLight::new(Point3::new(-6.0, 7.0, -8.0), Color::new(1.0, 1.0, 1.0)),

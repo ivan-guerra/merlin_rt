@@ -22,22 +22,22 @@ fn wood() -> Material {
 }
 
 fn cube(scale: Vector3<f64>, translation: Vector3<f64>) -> Cube {
-    Cube::new(
-        wood(),
-        Transform::sequence([
+    Cube::builder()
+        .material(wood())
+        .transform(Transform::sequence([
             Transform::scale(Scale3::new(scale.x, scale.y, scale.z)),
             Transform::translation(Translation3::new(
                 translation.x,
                 translation.y,
                 translation.z,
             )),
-        ]),
-    )
+        ]))
+        .build()
 }
 
 fn main() -> Result<()> {
-    let floor = Plane {
-        material: Material {
+    let floor = Plane::builder()
+        .material(Material {
             ambient: 0.2,
             diffuse: 0.8,
             specular: 0.05,
@@ -47,9 +47,9 @@ fn main() -> Result<()> {
                 transform: Transform::scale(Scale3::new(0.75, 0.75, 0.75)),
             })),
             ..Default::default()
-        },
-        transform: Transform::identity(),
-    };
+        })
+        .transform(Transform::identity())
+        .build();
 
     let tabletop = cube(Vector3::new(3.0, 0.2, 2.0), Vector3::new(0.0, 2.1, 0.0));
 

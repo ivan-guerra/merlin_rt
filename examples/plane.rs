@@ -14,44 +14,41 @@ use std::path::Path;
 fn main() -> Result<()> {
     let floor = Plane::default();
 
-    let middle = Sphere {
-        transform: Transform::translation(Translation3::new(-0.5, 1.0, 0.5)),
-        material: Material {
+    let middle = Sphere::builder()
+        .transform(Transform::translation(Translation3::new(-0.5, 1.0, 0.5)))
+        .material(Material {
             color: Color::new(0.1, 1.0, 0.5),
             diffuse: 0.7,
             specular: 0.3,
             ..Default::default()
-        },
-        ..Default::default()
-    };
+        })
+        .build();
 
-    let right = Sphere {
-        transform: Transform::sequence([
+    let right = Sphere::builder()
+        .transform(Transform::sequence([
             Transform::scale(Scale3::new(0.5, 0.5, 0.5)),
             Transform::translation(Translation3::new(1.5, 0.5, -0.5)),
-        ]),
-        material: Material {
+        ]))
+        .material(Material {
             color: Color::new(0.5, 1.0, 0.1),
             diffuse: 0.7,
             specular: 0.3,
             ..Default::default()
-        },
-        ..Default::default()
-    };
+        })
+        .build();
 
-    let left = Sphere {
-        transform: Transform::sequence([
+    let left = Sphere::builder()
+        .transform(Transform::sequence([
             Transform::scale(Scale3::new(0.33, 0.33, 0.33)),
             Transform::translation(Translation3::new(-1.5, 0.33, -0.75)),
-        ]),
-        material: Material {
+        ]))
+        .material(Material {
             color: Color::new(1.0, 0.8, 0.1),
             diffuse: 0.7,
             specular: 0.3,
             ..Default::default()
-        },
-        ..Default::default()
-    };
+        })
+        .build();
 
     let world = World::new(
         PointLight::new(Point3::new(-10.0, 10.0, -10.0), Color::new(1.0, 1.0, 1.0)),

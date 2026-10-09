@@ -11,8 +11,8 @@ use nalgebra::{Point3, Scale3, Translation3, Vector3};
 use std::path::Path;
 
 fn main() -> Result<()> {
-    let floor = Plane {
-        material: Material {
+    let floor = Plane::builder()
+        .material(Material {
             ambient: 0.15,
             diffuse: 0.75,
             specular: 0.15,
@@ -23,12 +23,12 @@ fn main() -> Result<()> {
                 transform: Transform::scale(Scale3::new(0.5, 0.5, 0.5)),
             })),
             ..Default::default()
-        },
-        transform: Transform::identity(),
-    };
+        })
+        .transform(Transform::identity())
+        .build();
 
-    let glass_sphere = Sphere {
-        material: Material {
+    let glass_sphere = Sphere::builder()
+        .material(Material {
             color: Color::new(0.95, 0.98, 1.0),
             ambient: 0.0,
             diffuse: 0.1,
@@ -38,16 +38,15 @@ fn main() -> Result<()> {
             transparency: 1.0,
             refractive_index: 1.5,
             ..Default::default()
-        },
-        transform: Transform::sequence([
+        })
+        .transform(Transform::sequence([
             Transform::scale(Scale3::new(1.5, 1.5, 1.5)),
             Transform::translation(Translation3::new(0.0, 1.5, 0.0)),
-        ]),
-        ..Default::default()
-    };
+        ]))
+        .build();
 
-    let air_bubble = Sphere {
-        material: Material {
+    let air_bubble = Sphere::builder()
+        .material(Material {
             ambient: 0.0,
             diffuse: 0.0,
             specular: 0.0,
@@ -55,60 +54,56 @@ fn main() -> Result<()> {
             transparency: 1.0,
             refractive_index: 1.0,
             ..Default::default()
-        },
-        transform: Transform::sequence([
+        })
+        .transform(Transform::sequence([
             Transform::scale(Scale3::new(0.45, 0.45, 0.45)),
             Transform::translation(Translation3::new(0.0, 1.5, 0.0)),
-        ]),
-        ..Default::default()
-    };
+        ]))
+        .build();
 
-    let red_sphere = Sphere {
-        material: Material {
+    let red_sphere = Sphere::builder()
+        .material(Material {
             color: Color::new(0.9, 0.08, 0.12),
             diffuse: 0.7,
             specular: 0.35,
             shininess: 100.0,
             ..Default::default()
-        },
-        transform: Transform::sequence([
+        })
+        .transform(Transform::sequence([
             Transform::scale(Scale3::new(0.65, 0.65, 0.65)),
             Transform::translation(Translation3::new(-2.0, 0.65, 1.2)),
-        ]),
-        ..Default::default()
-    };
+        ]))
+        .build();
 
-    let blue_sphere = Sphere {
-        material: Material {
+    let blue_sphere = Sphere::builder()
+        .material(Material {
             color: Color::new(0.05, 0.25, 0.9),
             diffuse: 0.7,
             specular: 0.45,
             shininess: 150.0,
             reflective: 0.2,
             ..Default::default()
-        },
-        transform: Transform::sequence([
+        })
+        .transform(Transform::sequence([
             Transform::scale(Scale3::new(0.8, 0.8, 0.8)),
             Transform::translation(Translation3::new(2.1, 0.8, 0.6)),
-        ]),
-        ..Default::default()
-    };
+        ]))
+        .build();
 
-    let gold_sphere = Sphere {
-        material: Material {
+    let gold_sphere = Sphere::builder()
+        .material(Material {
             color: Color::new(1.0, 0.62, 0.08),
             diffuse: 0.65,
             specular: 0.5,
             shininess: 200.0,
             reflective: 0.35,
             ..Default::default()
-        },
-        transform: Transform::sequence([
+        })
+        .transform(Transform::sequence([
             Transform::scale(Scale3::new(0.4, 0.4, 0.4)),
             Transform::translation(Translation3::new(0.0, 0.4, -2.2)),
-        ]),
-        ..Default::default()
-    };
+        ]))
+        .build();
 
     let world = World::new(
         PointLight::new(Point3::new(-6.0, 8.0, -8.0), Color::new(1.0, 1.0, 1.0)),

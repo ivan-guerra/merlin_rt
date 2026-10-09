@@ -12,79 +12,73 @@ use nalgebra::{Point3, Scale3, Translation3, Vector3};
 use std::path::Path;
 
 fn main() -> Result<()> {
-    let floor = Sphere {
-        transform: Transform::scale(Scale3::new(10.0, 0.01, 10.0)),
-        material: Material {
+    let floor = Sphere::builder()
+        .transform(Transform::scale(Scale3::new(10.0, 0.01, 10.0)))
+        .material(Material {
             color: Color::new(1.0, 0.9, 0.9),
             specular: 0.0,
             ..Default::default()
-        },
-        ..Default::default()
-    };
-    let left_wall = Sphere {
-        transform: Transform::sequence([
+        })
+        .build();
+    let left_wall = Sphere::builder()
+        .transform(Transform::sequence([
             Transform::scale(Scale3::new(10.0, 0.01, 10.0)),
             Transform::rotation(Axis::X, std::f64::consts::FRAC_PI_2),
             Transform::rotation(Axis::Y, -std::f64::consts::FRAC_PI_4),
             Transform::translation(Translation3::new(0.0, 0.0, 5.0)),
-        ]),
-        material: Material {
+        ]))
+        .material(Material {
             color: Color::new(1.0, 0.9, 0.9),
             specular: 0.0,
             ..Default::default()
-        },
-        ..Default::default()
-    };
-    let right_wall = Sphere {
-        transform: Transform::sequence([
+        })
+        .build();
+    let right_wall = Sphere::builder()
+        .transform(Transform::sequence([
             Transform::scale(Scale3::new(10.0, 0.01, 10.0)),
             Transform::rotation(Axis::X, std::f64::consts::FRAC_PI_2),
             Transform::rotation(Axis::Y, std::f64::consts::FRAC_PI_4),
             Transform::translation(Translation3::new(0.0, 0.0, 5.0)),
-        ]),
-        material: Material {
+        ]))
+        .material(Material {
             color: Color::new(1.0, 0.9, 0.9),
             specular: 0.0,
             ..Default::default()
-        },
-        ..Default::default()
-    };
-    let middle = Sphere {
-        transform: Transform::translation(Translation3::new(-0.5, 1.0, 0.5)),
-        material: Material {
+        })
+        .build();
+    let middle = Sphere::builder()
+        .transform(Transform::translation(Translation3::new(-0.5, 1.0, 0.5)))
+        .material(Material {
             color: Color::new(0.1, 1.0, 0.5),
             diffuse: 0.7,
             specular: 0.3,
             ..Default::default()
-        },
-        ..Default::default()
-    };
-    let right = Sphere {
-        transform: Transform::sequence([
+        })
+        .build();
+    let right = Sphere::builder()
+        .transform(Transform::sequence([
             Transform::scale(Scale3::new(0.5, 0.5, 0.5)),
             Transform::translation(Translation3::new(1.5, 0.5, -0.5)),
-        ]),
-        material: Material {
+        ]))
+        .material(Material {
             color: Color::new(0.5, 1.0, 0.1),
             diffuse: 0.7,
             specular: 0.3,
             ..Default::default()
-        },
-        ..Default::default()
-    };
-    let left = Sphere {
-        transform: Transform::sequence([
+        })
+        .build();
+    let left = Sphere::builder()
+        .transform(Transform::sequence([
             Transform::scale(Scale3::new(0.33, 0.33, 0.33)),
             Transform::translation(Translation3::new(-1.5, 0.33, -0.75)),
-        ]),
-        material: Material {
+        ]))
+        .material(Material {
             color: Color::new(1.0, 0.8, 0.1),
             diffuse: 0.7,
             specular: 0.3,
             ..Default::default()
-        },
-        ..Default::default()
-    };
+        })
+        .build();
     let world = World::new(
         PointLight::new(Point3::new(-10.0, 10.0, -10.0), Color::new(1.0, 1.0, 1.0)),
         vec![

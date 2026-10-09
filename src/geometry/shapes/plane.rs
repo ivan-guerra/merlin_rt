@@ -11,8 +11,14 @@ use nalgebra::{Point3, Vector3};
 
 #[derive(Debug, PartialEq)]
 pub struct Plane {
-    pub transform: Transform,
-    pub material: Material,
+    transform: Transform,
+    material: Material,
+}
+
+impl Plane {
+    pub fn builder() -> PlaneBuilder {
+        PlaneBuilder::default()
+    }
 }
 
 impl Default for Plane {
@@ -24,6 +30,28 @@ impl Default for Plane {
     }
 }
 
+#[derive(Debug, Default)]
+#[must_use = "call build() to create the shape"]
+pub struct PlaneBuilder {
+    shape: Plane,
+}
+
+impl PlaneBuilder {
+    pub fn transform(mut self, transform: Transform) -> Self {
+        self.shape.transform = transform;
+        self
+    }
+
+    pub fn material(mut self, material: Material) -> Self {
+        self.shape.material = material;
+        self
+    }
+
+    pub fn build(self) -> Plane {
+        self.shape
+    }
+}
+
 impl Shape for Plane {
     fn transform(&self) -> &Transform {
         &self.transform
@@ -31,10 +59,6 @@ impl Shape for Plane {
 
     fn material(&self) -> &Material {
         &self.material
-    }
-
-    fn material_mut(&mut self) -> &mut Material {
-        &mut self.material
     }
 
     fn intersect(&self, ray: &Ray) -> Result<Vec<Intersection<'_>>, TransformError> {

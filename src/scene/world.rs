@@ -157,26 +157,24 @@ impl Default for World {
             crate::rendering::canvas::Color::new(1.0, 1.0, 1.0),
         );
 
-        let sphere1 = Sphere {
-            material: Material {
+        let sphere1 = Sphere::builder()
+            .material(Material {
                 color: crate::rendering::canvas::Color::new(0.8, 1.0, 0.6),
                 diffuse: 0.7,
                 specular: 0.2,
                 ..Default::default()
-            },
-            ..Default::default()
-        };
-        let sphere2 = Sphere {
-            transform: Transform::scale(Scale3::new(0.5, 0.5, 0.5)),
-            ..Default::default()
-        };
-        let plane = Plane {
-            material: Material {
+            })
+            .build();
+        let sphere2 = Sphere::builder()
+            .transform(Transform::scale(Scale3::new(0.5, 0.5, 0.5)))
+            .build();
+        let plane = Plane::builder()
+            .material(Material {
                 reflective: 0.5,
                 ..Default::default()
-            },
-            transform: Transform::translation(Translation3::new(0.0, -1.0, 0.0)),
-        };
+            })
+            .transform(Transform::translation(Translation3::new(0.0, -1.0, 0.0)))
+            .build();
 
         World {
             light,
@@ -299,14 +297,15 @@ impl Computations<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rendering::canvas::Color;
+    use crate::{geometry::shapes::SphereBuilder, rendering::canvas::Color};
     use approx::assert_abs_diff_eq;
 
-    fn glass_sphere() -> Sphere {
-        let mut sphere = Sphere::default();
-        sphere.material.transparency = 1.0;
-        sphere.material.refractive_index = 1.5;
-        sphere
+    fn glass_sphere_builder(refractive_index: f64) -> SphereBuilder {
+        Sphere::builder().material(Material {
+            transparency: 1.0,
+            refractive_index,
+            ..Default::default()
+        })
     }
 
     #[derive(Debug)]
@@ -435,8 +434,26 @@ mod tests {
     #[test]
     fn test_color_with_an_intersection_behind_the_ray() {
         let mut world = World::default();
-        world.objects[0].material_mut().ambient = 1.0;
-        world.objects[1].material_mut().ambient = 1.0;
+        world.objects[0] = Box::new(
+            Sphere::builder()
+                .material(Material {
+                    color: Color::new(0.8, 1.0, 0.6),
+                    ambient: 1.0,
+                    diffuse: 0.7,
+                    specular: 0.2,
+                    ..Default::default()
+                })
+                .build(),
+        );
+        world.objects[1] = Box::new(
+            Sphere::builder()
+                .transform(Transform::scale(Scale3::new(0.5, 0.5, 0.5)))
+                .material(Material {
+                    ambient: 1.0,
+                    ..Default::default()
+                })
+                .build(),
+        );
         let expected_color = world.objects[1].material().color;
 
         let ray = Ray::new(Point3::new(0.0, 0.0, 0.75), Vector3::new(0.0, 0.0, -1.0));
@@ -540,10 +557,9 @@ mod tests {
     fn test_the_hit_should_offset_the_point() {
         let mut world = World::default();
         let ray = Ray::new(Point3::new(0.0, 0.0, -5.0), Vector3::new(0.0, 0.0, 1.0));
-        let sphere = Sphere {
-            transform: Transform::translation(Translation3::new(0.0, 0.0, 1.0)),
-            ..Default::default()
-        };
+        let sphere = Sphere::builder()
+            .transform(Transform::translation(Translation3::new(0.0, 0.0, 1.0)))
+            .build();
         world.objects[0] = Box::new(sphere);
         let intersection = Intersection::new(5.0, world.objects[0].as_ref());
         let comps = Computations::prepare_computations(&intersection, &ray, None).unwrap();
@@ -591,13 +607,13 @@ mod tests {
     #[test]
     fn test_the_reflected_color_for_a_reflective_material() {
         let mut world = World::default();
-        let plane = Plane {
-            material: Material {
+        let plane = Plane::builder()
+            .material(Material {
                 reflective: 0.5,
                 ..Default::default()
-            },
-            transform: Transform::translation(Translation3::new(0.0, -1.0, 0.0)),
-        };
+            })
+            .transform(Transform::translation(Translation3::new(0.0, -1.0, 0.0)))
+            .build();
         world.objects.push(Box::new(plane));
         let shape = world.objects.last().unwrap().as_ref();
         let ray = Ray::new(
@@ -618,13 +634,13 @@ mod tests {
     #[test]
     fn test_shade_hit_with_a_reflective_material() {
         let mut world = World::default();
-        let plane = Plane {
-            material: Material {
+        let plane = Plane::builder()
+            .material(Material {
                 reflective: 0.5,
                 ..Default::default()
-            },
-            transform: Transform::translation(Translation3::new(0.0, -1.0, 0.0)),
-        };
+            })
+            .transform(Transform::translation(Translation3::new(0.0, -1.0, 0.0)))
+            .build();
         world.objects.push(Box::new(plane));
         let shape = world.objects.last().unwrap().as_ref();
         let ray = Ray::new(
@@ -645,13 +661,13 @@ mod tests {
     #[test]
     fn test_the_reflected_color_at_the_maximum_recursive_depth() {
         let mut world = World::default();
-        let plane = Plane {
-            material: Material {
+        let plane = Plane::builder()
+            .material(Material {
                 reflective: 0.5,
                 ..Default::default()
-            },
-            transform: Transform::translation(Translation3::new(0.0, -1.0, 0.0)),
-        };
+            })
+            .transform(Transform::translation(Translation3::new(0.0, -1.0, 0.0)))
+            .build();
         world.objects.push(Box::new(plane));
         let shape = world.objects.last().unwrap().as_ref();
         let ray = Ray::new(
@@ -671,15 +687,15 @@ mod tests {
 
     #[test]
     fn test_finding_n1_and_n2_at_various_intersections() {
-        let mut a = glass_sphere();
-        let mut b = glass_sphere();
-        let mut c = glass_sphere();
-        a.transform = Transform::scale(Scale3::new(2.0, 2.0, 2.0));
-        b.transform = Transform::translation(Translation3::new(0.0, 0.0, -0.25));
-        c.transform = Transform::translation(Translation3::new(0.0, 0.0, 0.25));
-        a.material.refractive_index = 1.5;
-        b.material.refractive_index = 2.0;
-        c.material.refractive_index = 2.5;
+        let a = glass_sphere_builder(1.5)
+            .transform(Transform::scale(Scale3::new(2.0, 2.0, 2.0)))
+            .build();
+        let b = glass_sphere_builder(2.0)
+            .transform(Transform::translation(Translation3::new(0.0, 0.0, -0.25)))
+            .build();
+        let c = glass_sphere_builder(2.5)
+            .transform(Transform::translation(Translation3::new(0.0, 0.0, 0.25)))
+            .build();
 
         let ray = Ray::new(Point3::new(0.0, 0.0, -4.0), Vector3::new(0.0, 0.0, 1.0));
         let intersections = vec![
@@ -711,7 +727,7 @@ mod tests {
 
     #[test]
     fn test_finding_n1_and_n2_for_coincident_intersections() {
-        let shape = glass_sphere();
+        let shape = glass_sphere_builder(1.5).build();
         let ray = Ray::new(Point3::new(0.0, 1.0, -5.0), Vector3::new(0.0, 0.0, 1.0));
         let intersections = vec![
             Intersection::new(5.0, &shape),
@@ -733,8 +749,9 @@ mod tests {
 
     #[test]
     fn test_the_under_point_is_offset_below_the_surface() {
-        let mut shape = glass_sphere();
-        shape.transform = Transform::translation(Translation3::new(0.0, 0.0, 1.0));
+        let shape = glass_sphere_builder(1.5)
+            .transform(Transform::translation(Translation3::new(0.0, 0.0, 1.0)))
+            .build();
         let ray = Ray::new(Point3::new(0.0, 0.0, -5.0), Vector3::new(0.0, 0.0, 1.0));
         let intersections = vec![Intersection::new(5.0, &shape)];
         let comps =
@@ -776,10 +793,23 @@ mod tests {
     #[test]
     fn test_the_refracted_color_with_a_refracted_ray() {
         let mut world = World::default();
-        world.objects[0].material_mut().ambient = 1.0;
-        world.objects[0].material_mut().pattern = Some(Box::new(TestPattern));
-        world.objects[1].material_mut().transparency = 1.0;
-        world.objects[1].material_mut().refractive_index = 1.5;
+        world.objects[0] = Box::new(
+            Sphere::builder()
+                .material(Material {
+                    color: Color::new(0.8, 1.0, 0.6),
+                    ambient: 1.0,
+                    diffuse: 0.7,
+                    specular: 0.2,
+                    pattern: Some(Box::new(TestPattern)),
+                    ..Default::default()
+                })
+                .build(),
+        );
+        world.objects[1] = Box::new(
+            glass_sphere_builder(1.5)
+                .transform(Transform::scale(Scale3::new(0.5, 0.5, 0.5)))
+                .build(),
+        );
 
         let shape_a = world.objects[0].as_ref();
         let shape_b = world.objects[1].as_ref();
@@ -801,24 +831,23 @@ mod tests {
     #[test]
     fn test_shade_hit_with_a_transparent_material() {
         let mut world = World::default();
-        let floor = Plane {
-            material: Material {
+        let floor = Plane::builder()
+            .material(Material {
                 transparency: 0.5,
                 refractive_index: 1.5,
                 ..Default::default()
-            },
-            transform: Transform::translation(Translation3::new(0.0, -1.0, 0.0)),
-        };
+            })
+            .transform(Transform::translation(Translation3::new(0.0, -1.0, 0.0)))
+            .build();
         world.objects.push(Box::new(floor));
-        let ball = Sphere {
-            material: Material {
+        let ball = Sphere::builder()
+            .material(Material {
                 color: Color::new(1.0, 0.0, 0.0),
                 ambient: 0.5,
                 ..Default::default()
-            },
-            transform: Transform::translation(Translation3::new(0.0, -3.5, -0.5)),
-            ..Default::default()
-        };
+            })
+            .transform(Transform::translation(Translation3::new(0.0, -3.5, -0.5)))
+            .build();
         world.objects.push(Box::new(ball));
         let ray = Ray::new(
             Point3::new(0.0, 0.0, -3.0),
@@ -842,8 +871,9 @@ mod tests {
 
     #[test]
     fn test_the_schlick_approximation_under_total_internal_reflection() {
-        let mut shape = glass_sphere();
-        shape.transform = Transform::scale(Scale3::new(2.0, 2.0, 2.0));
+        let shape = glass_sphere_builder(1.5)
+            .transform(Transform::scale(Scale3::new(2.0, 2.0, 2.0)))
+            .build();
         let ray = Ray::new(
             Point3::new(0.0, 0.0, std::f64::consts::SQRT_2 / 2.0),
             Vector3::new(0.0, 1.0, 0.0),
@@ -862,7 +892,7 @@ mod tests {
 
     #[test]
     fn test_the_schlick_approximation_with_a_perpendicular_viewing_angle() {
-        let shape = glass_sphere();
+        let shape = glass_sphere_builder(1.5).build();
         let ray = Ray::new(Point3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0));
         let intersections = vec![
             Intersection::new(-1.0, &shape),
@@ -878,7 +908,7 @@ mod tests {
 
     #[test]
     fn test_the_schlick_approximation_with_small_angle_and_n2_greater_than_n1() {
-        let shape = glass_sphere();
+        let shape = glass_sphere_builder(1.5).build();
         let ray = Ray::new(Point3::new(0.0, 0.99, -2.0), Vector3::new(0.0, 0.0, 1.0));
         let intersections = vec![Intersection::new(1.8589, &shape)];
         let comps =
@@ -892,25 +922,24 @@ mod tests {
     #[test]
     fn test_shade_hit_with_a_reflective_transparent_material() {
         let mut world = World::default();
-        let floor = Plane {
-            material: Material {
+        let floor = Plane::builder()
+            .material(Material {
                 reflective: 0.5,
                 transparency: 0.5,
                 refractive_index: 1.5,
                 ..Default::default()
-            },
-            transform: Transform::translation(Translation3::new(0.0, -1.0, 0.0)),
-        };
+            })
+            .transform(Transform::translation(Translation3::new(0.0, -1.0, 0.0)))
+            .build();
         world.objects.push(Box::new(floor));
-        let ball = Sphere {
-            material: Material {
+        let ball = Sphere::builder()
+            .material(Material {
                 color: Color::new(1.0, 0.0, 0.0),
                 ambient: 0.5,
                 ..Default::default()
-            },
-            transform: Transform::translation(Translation3::new(0.0, -3.5, -0.5)),
-            ..Default::default()
-        };
+            })
+            .transform(Transform::translation(Translation3::new(0.0, -3.5, -0.5)))
+            .build();
         world.objects.push(Box::new(ball));
         let ray = Ray::new(
             Point3::new(0.0, 0.0, -3.0),
