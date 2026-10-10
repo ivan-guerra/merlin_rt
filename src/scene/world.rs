@@ -1,4 +1,5 @@
 use crate::{
+    EPSILON,
     geometry::{
         ray::Ray,
         shapes::{Intersection, Plane, Shape, ShapeRef, Sphere},
@@ -260,7 +261,6 @@ impl Computations<'_> {
         }
         let reflectv = Transform::reflection(normalv).apply(ray.direction);
 
-        const EPSILON: f64 = 1e-5;
         let over_point = point + normalv * EPSILON;
         let under_point = point - normalv * EPSILON;
 
@@ -511,7 +511,7 @@ mod tests {
             0.59761, -0.71714, 0.00000, 0.00000, 0.00000, 0.00000, 1.00000,
         );
 
-        assert_abs_diff_eq!(*t.matrix(), expected, epsilon = 1e-5);
+        assert_abs_diff_eq!(*t.matrix(), expected, epsilon = EPSILON);
     }
 
     #[test]
@@ -571,7 +571,7 @@ mod tests {
         let intersection = Intersection::new(5.0, world.objects[0].as_ref());
         let comps = Computations::prepare_computations(&intersection, &ray, None).unwrap();
 
-        assert!(comps.over_point.z < -f64::EPSILON / 2.0);
+        assert!(comps.over_point.z < -EPSILON / 2.0);
         assert!(comps.point.z > comps.over_point.z);
     }
 
@@ -662,7 +662,10 @@ mod tests {
         let comps = Computations::prepare_computations(&intersection, &ray, None).unwrap();
         let color = world.shade_hit(&comps, MAX_RECURSION_DEPTH).unwrap();
 
-        assert_eq!(color, Color::new(0.87677, 0.92436, 0.82918));
+        // The book's approximate values need a looser tolerance than Color equality.
+        assert_abs_diff_eq!(color.r(), 0.87677, epsilon = 1e-4);
+        assert_abs_diff_eq!(color.g(), 0.92436, epsilon = 1e-4);
+        assert_abs_diff_eq!(color.b(), 0.82918, epsilon = 1e-4);
     }
 
     #[test]
@@ -765,7 +768,7 @@ mod tests {
             Computations::prepare_computations(&intersections[0], &ray, Some(&intersections))
                 .unwrap();
 
-        assert!(comps.under_point.z > f64::EPSILON / 2.0);
+        assert!(comps.under_point.z > EPSILON / 2.0);
         assert!(comps.point.z < comps.under_point.z);
     }
 
@@ -832,7 +835,10 @@ mod tests {
                 .unwrap();
         let color = world.refracted_color(&comps, MAX_RECURSION_DEPTH).unwrap();
 
-        assert_eq!(color, Color::new(0.0, 0.99888, 0.04725));
+        // The book's approximate values need a looser tolerance than Color equality.
+        assert_abs_diff_eq!(color.r(), 0.0, epsilon = 1e-4);
+        assert_abs_diff_eq!(color.g(), 0.99888, epsilon = 1e-4);
+        assert_abs_diff_eq!(color.b(), 0.04725, epsilon = 1e-4);
     }
 
     #[test]
@@ -923,7 +929,7 @@ mod tests {
                 .unwrap();
         let reflectance = comps.schlick();
 
-        assert_abs_diff_eq!(reflectance, 0.48873, epsilon = 1e-5);
+        assert_abs_diff_eq!(reflectance, 0.48873, epsilon = EPSILON);
     }
 
     #[test]

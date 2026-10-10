@@ -1,3 +1,4 @@
+use crate::EPSILON;
 use approx::abs_diff_eq;
 use nalgebra::Vector3;
 use std::fs::File;
@@ -38,7 +39,6 @@ impl Color {
 
 impl PartialEq for Color {
     fn eq(&self, other: &Self) -> bool {
-        const EPSILON: f64 = 1e-4;
         abs_diff_eq!(self.r(), other.r(), epsilon = EPSILON)
             && abs_diff_eq!(self.g(), other.g(), epsilon = EPSILON)
             && abs_diff_eq!(self.b(), other.b(), epsilon = EPSILON)
@@ -191,6 +191,20 @@ impl Canvas {
 mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
+
+    #[test]
+    fn test_color_equality_uses_the_shared_epsilon() {
+        let color = Color::new(0.5, 0.5, 0.5);
+        for component in 0..3 {
+            let mut close = [0.5; 3];
+            close[component] += EPSILON / 2.0;
+            assert_eq!(color, Color::new(close[0], close[1], close[2]));
+
+            let mut distant = [0.5; 3];
+            distant[component] += EPSILON * 2.0;
+            assert_ne!(color, Color::new(distant[0], distant[1], distant[2]));
+        }
+    }
 
     #[test]
     fn test_colors_are_rgb_tuples() {

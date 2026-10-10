@@ -104,6 +104,7 @@ mod tests {
     use core::f64;
 
     use super::*;
+    use crate::EPSILON;
     use crate::{geometry::transforms::Axis, scene::world::World};
     use approx::assert_abs_diff_eq;
     use nalgebra::{Translation3, Vector3};
@@ -157,9 +158,9 @@ mod tests {
         assert_abs_diff_eq!(ray.origin.x, 0.0);
         assert_abs_diff_eq!(ray.origin.y, 0.0);
         assert_abs_diff_eq!(ray.origin.z, 0.0);
-        assert_abs_diff_eq!(ray.direction.x, 0.66519, epsilon = 1e-5);
-        assert_abs_diff_eq!(ray.direction.y, 0.33259, epsilon = 1e-5);
-        assert_abs_diff_eq!(ray.direction.z, -0.66851, epsilon = 1e-5);
+        assert_abs_diff_eq!(ray.direction.x, 0.66519, epsilon = EPSILON);
+        assert_abs_diff_eq!(ray.direction.y, 0.33259, epsilon = EPSILON);
+        assert_abs_diff_eq!(ray.direction.z, -0.66851, epsilon = EPSILON);
     }
 
     #[test]
@@ -174,9 +175,17 @@ mod tests {
         assert_abs_diff_eq!(ray.origin.x, 0.0);
         assert_abs_diff_eq!(ray.origin.y, 2.0);
         assert_abs_diff_eq!(ray.origin.z, -5.0);
-        assert_abs_diff_eq!(ray.direction.x, f64::consts::SQRT_2 / 2.0, epsilon = 1e-5);
-        assert_abs_diff_eq!(ray.direction.y, 0.0, epsilon = 1e-5);
-        assert_abs_diff_eq!(ray.direction.z, -f64::consts::SQRT_2 / 2.0, epsilon = 1e-5);
+        assert_abs_diff_eq!(
+            ray.direction.x,
+            f64::consts::SQRT_2 / 2.0,
+            epsilon = EPSILON
+        );
+        assert_abs_diff_eq!(ray.direction.y, 0.0, epsilon = EPSILON);
+        assert_abs_diff_eq!(
+            ray.direction.z,
+            -f64::consts::SQRT_2 / 2.0,
+            epsilon = EPSILON
+        );
     }
 
     #[test]
@@ -191,8 +200,8 @@ mod tests {
         let image = camera.render(&world).unwrap();
 
         let pixel_color = image.pixel_at(5, 5).unwrap();
-        assert_abs_diff_eq!(pixel_color.r(), 0.38066, epsilon = 1e-5);
-        assert_abs_diff_eq!(pixel_color.g(), 0.47583, epsilon = 1e-5);
-        assert_abs_diff_eq!(pixel_color.b(), 0.2855, epsilon = 1e-5);
+        assert_abs_diff_eq!(pixel_color.r(), 0.38066, epsilon = EPSILON);
+        assert_abs_diff_eq!(pixel_color.g(), 0.47583, epsilon = EPSILON);
+        assert_abs_diff_eq!(pixel_color.b(), 0.2855, epsilon = EPSILON);
     }
 }

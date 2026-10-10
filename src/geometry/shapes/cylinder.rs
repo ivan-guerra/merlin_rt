@@ -1,4 +1,5 @@
 use crate::{
+    EPSILON,
     geometry::{
         ray::Ray,
         shapes::{Intersection, ParentLink, Shape},
@@ -177,7 +178,6 @@ impl Shape for Cylinder {
     fn normal_at(&self, world_point: Point3<f64>) -> Result<Vector3<f64>, TransformError> {
         let object_point = self.world_to_object(world_point)?;
         let dist = object_point.x.powi(2) + object_point.z.powi(2);
-        const EPSILON: f64 = 1e-6;
 
         if dist < 1.0 && object_point.y >= self.maximum - EPSILON {
             self.normal_to_world(Vector3::new(0.0, 1.0, 0.0))
@@ -220,8 +220,8 @@ mod tests {
         for (ray, (expected_t0, expected_t1)) in rays.iter().zip(expected_ts.iter()) {
             let xs = cyl.intersect(ray).unwrap();
             assert_eq!(xs.len(), 2);
-            assert_abs_diff_eq!(xs[0].t, *expected_t0, epsilon = 1e-5);
-            assert_abs_diff_eq!(xs[1].t, *expected_t1, epsilon = 1e-5);
+            assert_abs_diff_eq!(xs[0].t, *expected_t0, epsilon = EPSILON);
+            assert_abs_diff_eq!(xs[1].t, *expected_t1, epsilon = EPSILON);
         }
     }
 

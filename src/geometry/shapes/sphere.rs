@@ -127,6 +127,7 @@ impl Shape for Sphere {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::EPSILON;
     use crate::{
         rendering::canvas::Color,
         scene::{light::PointLight, material::Material},
@@ -363,7 +364,7 @@ mod test {
         assert_abs_diff_eq!(
             normal,
             Vector3::new(0.0, 0.707117, -std::f64::consts::FRAC_1_SQRT_2),
-            epsilon = 1e-5
+            epsilon = EPSILON
         );
     }
 
@@ -382,7 +383,11 @@ mod test {
             .normal_at(Point3::new(0.0, 2f64.sqrt() / 2.0, -2f64.sqrt() / 2.0))
             .unwrap();
 
-        assert_abs_diff_eq!(normal, Vector3::new(0.0, 0.97014, -0.24254), epsilon = 1e-5);
+        assert_abs_diff_eq!(
+            normal,
+            Vector3::new(0.0, 0.97014, -0.24254),
+            epsilon = EPSILON
+        );
     }
 
     #[test]
@@ -451,9 +456,9 @@ mod test {
             .lighting(light, position, eyev, normalv, false)
             .unwrap();
 
-        assert_abs_diff_eq!(result.r(), 0.736396, epsilon = 1e-5);
-        assert_abs_diff_eq!(result.g(), 0.736396, epsilon = 1e-5);
-        assert_abs_diff_eq!(result.b(), 0.736396, epsilon = 1e-5);
+        assert_abs_diff_eq!(result.r(), 0.736396, epsilon = EPSILON);
+        assert_abs_diff_eq!(result.g(), 0.736396, epsilon = EPSILON);
+        assert_abs_diff_eq!(result.b(), 0.736396, epsilon = EPSILON);
     }
 
     #[test]
@@ -467,9 +472,9 @@ mod test {
             .lighting(light, position, eyev, normalv, false)
             .unwrap();
 
-        assert_abs_diff_eq!(result.r(), 1.636396, epsilon = 1e-5);
-        assert_abs_diff_eq!(result.g(), 1.636396, epsilon = 1e-5);
-        assert_abs_diff_eq!(result.b(), 1.636396, epsilon = 1e-5);
+        assert_abs_diff_eq!(result.r(), 1.636396, epsilon = EPSILON);
+        assert_abs_diff_eq!(result.g(), 1.636396, epsilon = EPSILON);
+        assert_abs_diff_eq!(result.b(), 1.636396, epsilon = EPSILON);
     }
 
     #[test]

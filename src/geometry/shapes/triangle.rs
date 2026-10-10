@@ -1,4 +1,5 @@
 use crate::{
+    EPSILON,
     geometry::{
         ray::Ray,
         shapes::{Intersection, ParentLink, Shape},
@@ -85,7 +86,6 @@ impl Triangle {
             self.transform().apply_inverse(ray.direction)?,
         );
 
-        const EPSILON: f64 = 1e-6;
         let direction_cross_e2 = ray.direction.cross(&self.e2);
         let determinant = self.e1.dot(&direction_cross_e2);
 

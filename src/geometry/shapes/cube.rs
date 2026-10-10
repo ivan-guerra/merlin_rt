@@ -1,4 +1,5 @@
 use crate::{
+    EPSILON,
     geometry::{
         ray::Ray,
         shapes::{Intersection, ParentLink, Shape},
@@ -10,7 +11,6 @@ use crate::{
 use nalgebra::{Point3, Vector3};
 
 fn check_axis(origin: f64, direction: f64) -> (f64, f64) {
-    const EPSILON: f64 = 1e-6;
     let tmin_numerator = -1.0 - origin;
     let tmax_numerator = 1.0 - origin;
 

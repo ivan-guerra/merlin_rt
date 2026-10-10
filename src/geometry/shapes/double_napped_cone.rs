@@ -1,4 +1,5 @@
 use crate::{
+    EPSILON,
     geometry::{
         ray::Ray,
         shapes::{Intersection, ParentLink, Shape},
@@ -8,8 +9,6 @@ use crate::{
 };
 
 use nalgebra::{Point3, Vector3};
-
-const EPSILON: f64 = 1e-6;
 
 #[derive(Debug)]
 pub struct DoubleNappedCone {
@@ -236,8 +235,8 @@ mod tests {
         for (ray, (expected_t0, expected_t1)) in rays.iter().zip(expected_ts.iter()) {
             let xs = cone.intersect(ray).unwrap();
             assert_eq!(xs.len(), 2);
-            assert_abs_diff_eq!(xs[0].t, *expected_t0, epsilon = 1e-5);
-            assert_abs_diff_eq!(xs[1].t, *expected_t1, epsilon = 1e-5);
+            assert_abs_diff_eq!(xs[0].t, *expected_t0, epsilon = EPSILON);
+            assert_abs_diff_eq!(xs[1].t, *expected_t1, epsilon = EPSILON);
         }
     }
 
@@ -251,7 +250,7 @@ mod tests {
         let xs = cone.intersect(&ray).unwrap();
 
         assert_eq!(xs.len(), 1);
-        assert_abs_diff_eq!(xs[0].t, 0.35355, epsilon = 1e-5);
+        assert_abs_diff_eq!(xs[0].t, 0.35355, epsilon = EPSILON);
     }
 
     #[test]

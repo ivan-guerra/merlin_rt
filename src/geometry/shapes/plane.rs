@@ -1,4 +1,5 @@
 use crate::{
+    EPSILON,
     geometry::{
         ray::Ray,
         shapes::{Intersection, ParentLink, Shape},
@@ -73,7 +74,6 @@ impl Shape for Plane {
             self.transform().apply_inverse(ray.direction)?,
         );
 
-        const EPSILON: f64 = 1e-6;
         if ray.direction.y.abs() < EPSILON {
             Ok(vec![])
         } else {
@@ -110,6 +110,17 @@ mod tests {
         let xs = plane.intersect(&ray).unwrap();
 
         assert_eq!(xs.len(), 0);
+    }
+
+    #[test]
+    fn test_nearly_parallel_rays_use_the_shared_epsilon() {
+        let plane = Plane::default();
+        let origin = Point3::new(0.0, 1.0, 0.0);
+        let parallel = Ray::new(origin, Vector3::new(1.0, -EPSILON / 2.0, 0.0).normalize());
+        let crossing = Ray::new(origin, Vector3::new(1.0, -EPSILON * 2.0, 0.0).normalize());
+
+        assert!(plane.intersect(&parallel).unwrap().is_empty());
+        assert_eq!(plane.intersect(&crossing).unwrap().len(), 1);
     }
 
     #[test]

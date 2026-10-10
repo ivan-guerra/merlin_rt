@@ -1,4 +1,4 @@
-use crate::{rendering::canvas::Color, scene::pattern::Pattern};
+use crate::{EPSILON, rendering::canvas::Color, scene::pattern::Pattern};
 
 #[derive(Debug)]
 pub struct Material {
@@ -59,10 +59,10 @@ impl Default for Material {
 impl PartialEq for Material {
     fn eq(&self, other: &Self) -> bool {
         self.color == other.color
-            && (self.ambient - other.ambient).abs() < 1e-5
-            && (self.diffuse - other.diffuse).abs() < 1e-5
-            && (self.specular - other.specular).abs() < 1e-5
-            && (self.shininess - other.shininess).abs() < 1e-5
+            && (self.ambient - other.ambient).abs() < EPSILON
+            && (self.diffuse - other.diffuse).abs() < EPSILON
+            && (self.specular - other.specular).abs() < EPSILON
+            && (self.shininess - other.shininess).abs() < EPSILON
     }
 }
 

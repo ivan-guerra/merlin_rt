@@ -1,4 +1,5 @@
 use crate::{
+    EPSILON,
     geometry::transforms::{Transform, TransformError},
     rendering::canvas::Color,
 };
@@ -10,8 +11,6 @@ const BLACK: Color = Color::new(0.0, 0.0, 0.0);
 const WHITE: Color = Color::new(1.0, 1.0, 1.0);
 
 fn stable_floor(value: f64) -> i32 {
-    const EPSILON: f64 = 1e-5;
-
     if value.abs() < EPSILON {
         0
     } else {
