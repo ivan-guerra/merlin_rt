@@ -253,7 +253,7 @@ impl Computations<'_> {
         let object = intersection.object;
         let point = ray.position(t);
         let eyev = -ray.direction;
-        let mut normalv = object.normal_at(point)?;
+        let mut normalv = object.normal_at_hit(point, intersection)?;
         let inside = normalv.dot(&eyev) < 0.0;
         if inside {
             normalv = -normalv;

@@ -3,6 +3,7 @@ mod cylinder;
 mod double_napped_cone;
 mod group;
 mod plane;
+mod smooth_triangle;
 mod sphere;
 mod triangle;
 
@@ -11,6 +12,7 @@ pub use cylinder::{Cylinder, CylinderBuilder};
 pub use double_napped_cone::{DoubleNappedCone, DoubleNappedConeBuilder};
 pub use group::{Group, GroupBuilder, GroupError, ObjImportError};
 pub use plane::{Plane, PlaneBuilder};
+pub use smooth_triangle::{SmoothTriangle, SmoothTriangleBuilder};
 pub use sphere::{Sphere, SphereBuilder};
 pub use triangle::{Triangle, TriangleBuilder};
 
@@ -93,6 +95,17 @@ pub trait Shape: Debug {
     /// Apply only this shape's inverse transform, not its ancestors' transforms.
     fn intersect(&self, ray: &Ray) -> Result<Vec<Intersection<'_>>, TransformError>;
     fn normal_at(&self, world_point: Point3<f64>) -> Result<Vector3<f64>, TransformError>;
+
+    /// Computes a world-space normal using any per-intersection data.
+    /// Shapes without interpolated normals can ignore the hit.
+    fn normal_at_hit(
+        &self,
+        world_point: Point3<f64>,
+        _hit: &Intersection<'_>,
+    ) -> Result<Vector3<f64>, TransformError> {
+        self.normal_at(world_point)
+    }
+
     fn lighting(
         &self,
         light: PointLight,
@@ -143,11 +156,30 @@ pub trait Shape: Debug {
 pub struct Intersection<'a> {
     pub t: f64,
     pub object: &'a dyn Shape,
+    /// Barycentric weight of a triangle's second vertex (not a texture coordinate).
+    pub u: Option<f64>,
+    /// Barycentric weight of a triangle's third vertex (not a texture coordinate).
+    pub v: Option<f64>,
 }
 
 impl<'a> Intersection<'a> {
     pub fn new(t: f64, object: &'a dyn Shape) -> Self {
-        Self { t, object }
+        Self {
+            t,
+            object,
+            u: None,
+            v: None,
+        }
+    }
+
+    /// Records the barycentric weights used to interpolate triangle normals.
+    pub fn with_uv(t: f64, object: &'a dyn Shape, u: f64, v: f64) -> Self {
+        Self {
+            t,
+            object,
+            u: Some(u),
+            v: Some(v),
+        }
     }
 
     pub fn hit(intersections: &mut [Self]) -> Option<&Self> {
@@ -160,6 +192,9 @@ impl<'a> Intersection<'a> {
 
 impl PartialEq for Intersection<'_> {
     fn eq(&self, other: &Self) -> bool {
-        self.t == other.t && std::ptr::addr_eq(self.object, other.object)
+        self.t == other.t
+            && std::ptr::addr_eq(self.object, other.object)
+            && self.u == other.u
+            && self.v == other.v
     }
 }

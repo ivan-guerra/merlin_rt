@@ -1,4 +1,4 @@
-use super::{Intersection, ParentLink, Shape, ShapeRef, Triangle};
+use super::{Intersection, ParentLink, Shape, ShapeRef, SmoothTriangle, Triangle};
 use crate::{
     geometry::{
         ray::Ray,
@@ -46,11 +46,12 @@ impl Group {
         GroupBuilder::default()
     }
 
-    /// Loads a Wavefront OBJ file as a group of flat triangles.
+    /// Loads a Wavefront OBJ file as a group of flat or smooth triangles.
     ///
     /// Faces are fan-triangulated in file order, preserving vertex winding. As
     /// in the book, this assumes convex polygons; triangulate concave faces
-    /// before importing. OBJ groups are flattened, and normals, texture
+    /// before importing. Faces with vertex normals become smooth triangles;
+    /// faces without normals remain flat. OBJ groups are flattened, and texture
     /// coordinates, materials, points and lines are ignored. All shapes use
     /// identity transforms and default materials.
     ///
@@ -62,27 +63,37 @@ impl Group {
             let (x, y, z, _) = raw.positions[index];
             Point3::new(f64::from(x), f64::from(y), f64::from(z))
         };
+        let normal = |index: usize| {
+            let (x, y, z) = raw.normals[index];
+            Vector3::new(f64::from(x), f64::from(y), f64::from(z))
+        };
         let mut group = Self::builder();
 
         for polygon in raw.polygons {
-            let indices: Vec<usize> = match polygon {
-                Polygon::P(indices) => indices,
-                Polygon::PT(vertices) | Polygon::PN(vertices) => {
-                    vertices.into_iter().map(|(position, _)| position).collect()
+            let indices: Vec<(usize, Option<usize>)> = match polygon {
+                Polygon::P(indices) => indices.into_iter().map(|p| (p, None)).collect(),
+                Polygon::PT(vertices) => vertices.into_iter().map(|(p, _)| (p, None)).collect(),
+                Polygon::PN(vertices) => vertices.into_iter().map(|(p, n)| (p, Some(n))).collect(),
+                Polygon::PTN(vertices) => {
+                    vertices.into_iter().map(|(p, _, n)| (p, Some(n))).collect()
                 }
-                Polygon::PTN(vertices) => vertices
-                    .into_iter()
-                    .map(|(position, _, _)| position)
-                    .collect(),
             };
 
             // The parser guarantees at least three valid position indices.
             for edge in indices[1..].windows(2) {
-                group = group.child(Rc::new(Triangle::new(
-                    point(indices[0]),
-                    point(edge[0]),
-                    point(edge[1]),
-                )));
+                let [a, b, c] = [indices[0], edge[0], edge[1]];
+                let child: ShapeRef = match (a.1, b.1, c.1) {
+                    (Some(n1), Some(n2), Some(n3)) => Rc::new(SmoothTriangle::new(
+                        point(a.0),
+                        point(b.0),
+                        point(c.0),
+                        normal(n1),
+                        normal(n2),
+                        normal(n3),
+                    )),
+                    _ => Rc::new(Triangle::new(point(a.0), point(b.0), point(c.0))),
+                };
+                group = group.child(child);
             }
         }
 
@@ -242,9 +253,15 @@ mod tests {
         assert_eq!(xs.len(), 2);
         for (index, t) in [2.0, 4.0].into_iter().enumerate() {
             assert_abs_diff_eq!(xs[index].t, t);
-            assert!(std::ptr::addr_eq(xs[index].object, group.children()[index].as_ref()));
+            assert!(std::ptr::addr_eq(
+                xs[index].object,
+                group.children()[index].as_ref()
+            ));
             assert_eq!(
-                xs[index].object.normal_at(ray.origin + ray.direction * t).unwrap(),
+                xs[index]
+                    .object
+                    .normal_at(ray.origin + ray.direction * t)
+                    .unwrap(),
                 Vector3::new(0.0, 0.0, -1.0)
             );
         }
@@ -253,13 +270,8 @@ mod tests {
     }
 
     #[test]
-    fn test_loading_obj_face_formats_without_using_normals_or_texture_coordinates() {
-        for face in [
-            "1 2 3",
-            "1/3 2/2 3/1",
-            "1//1 2//1 3//1",
-            "1/3/1 2/2/1 3/1/1",
-        ] {
+    fn test_loading_obj_face_formats_without_normals() {
+        for face in ["1 2 3", "1/3 2/2 3/1"] {
             let group = load_obj_source(&format!(
                 "v 0 1 0\nv -1 0 0\nv 1 0 0\n\
                  vt 0 0\nvt 1 0\nvt 0 1\nvn 1 0 0\nf {face}\n"
@@ -279,19 +291,24 @@ mod tests {
 
     #[test]
     fn test_fan_triangulating_an_obj_polygon_with_relative_indices() {
-        let group = load_obj_source(
-            "v -1 1 0\nv -1 0 0\nv 1 0 0\nv 1 1 0\nv 0 2 0\nf -5 -4 -3 -2 -1\n",
-        )
-        .unwrap();
+        let group =
+            load_obj_source("v -1 1 0\nv -1 0 0\nv 1 0 0\nv 1 1 0\nv 0 2 0\nf -5 -4 -3 -2 -1\n")
+                .unwrap();
         assert_eq!(group.children().len(), 3);
 
         // One ray through the interior of each triangle in the fan.
-        for (index, (x, y)) in [(-0.5, 0.25), (0.5, 0.75), (0.0, 1.5)].into_iter().enumerate() {
+        for (index, (x, y)) in [(-0.5, 0.25), (0.5, 0.75), (0.0, 1.5)]
+            .into_iter()
+            .enumerate()
+        {
             let ray = Ray::new(Point3::new(x, y, -2.0), Vector3::new(0.0, 0.0, 1.0));
             let xs = group.intersect(&ray).unwrap();
             assert_eq!(xs.len(), 1);
             assert_abs_diff_eq!(xs[0].t, 2.0);
-            assert!(std::ptr::addr_eq(xs[0].object, group.children()[index].as_ref()));
+            assert!(std::ptr::addr_eq(
+                xs[0].object,
+                group.children()[index].as_ref()
+            ));
         }
     }
 
@@ -304,7 +321,8 @@ mod tests {
 
     #[test]
     fn test_loading_obj_reports_io_errors() {
-        let path = std::env::temp_dir().join(format!("merlin-missing-{}.obj", uuid::Uuid::new_v4()));
+        let path =
+            std::env::temp_dir().join(format!("merlin-missing-{}.obj", uuid::Uuid::new_v4()));
         assert!(matches!(
             Group::from_obj(path),
             Err(ObjImportError::Obj(obj::ObjError::Io(error)))
@@ -320,7 +338,10 @@ mod tests {
             "v 0 0 0\nf 0 1 1\n",
             "v 0 0 0\nf 1 2 3\n",
         ] {
-            assert!(matches!(load_obj_source(source), Err(ObjImportError::Obj(_))));
+            assert!(matches!(
+                load_obj_source(source),
+                Err(ObjImportError::Obj(_))
+            ));
         }
     }
 

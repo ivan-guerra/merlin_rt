@@ -73,6 +73,44 @@ impl Triangle {
     pub fn normal(&self) -> Vector3<f64> {
         self.normal
     }
+
+    /// Shared Möller–Trumbore intersection for flat and smooth triangles.
+    /// The ray is in parent space; the returned weights belong to p2 and p3.
+    pub(super) fn intersect_uv(
+        &self,
+        ray: &Ray,
+    ) -> Result<Option<(f64, f64, f64)>, TransformError> {
+        let ray = Ray::new(
+            self.transform().apply_inverse(ray.origin)?,
+            self.transform().apply_inverse(ray.direction)?,
+        );
+
+        const EPSILON: f64 = 1e-6;
+        let direction_cross_e2 = ray.direction.cross(&self.e2);
+        let determinant = self.e1.dot(&direction_cross_e2);
+
+        if determinant.abs() < EPSILON {
+            return Ok(None);
+        }
+
+        let f = 1.0 / determinant;
+        let p1_to_origin = ray.origin - self.p1;
+        let u = f * p1_to_origin.dot(&direction_cross_e2);
+
+        if !(0.0..=1.0).contains(&u) {
+            return Ok(None);
+        }
+
+        let origin_cross_e1 = p1_to_origin.cross(&self.e1);
+        let v = f * ray.direction.dot(&origin_cross_e1);
+
+        if v < 0.0 || u + v > 1.0 {
+            return Ok(None);
+        }
+
+        let t = f * self.e2.dot(&origin_cross_e1);
+        Ok(Some((t, u, v)))
+    }
 }
 
 impl Default for Triangle {
@@ -130,36 +168,11 @@ impl Shape for Triangle {
     }
 
     fn intersect(&self, ray: &Ray) -> Result<Vec<Intersection<'_>>, TransformError> {
-        let ray = Ray::new(
-            self.transform().apply_inverse(ray.origin)?,
-            self.transform().apply_inverse(ray.direction)?,
-        );
-
-        const EPSILON: f64 = 1e-6;
-        let direction_cross_e2 = ray.direction.cross(&self.e2);
-        let determinant = self.e1.dot(&direction_cross_e2);
-
-        if determinant.abs() < EPSILON {
-            return Ok(vec![]);
-        }
-
-        let f = 1.0 / determinant;
-        let p1_to_origin = ray.origin - self.p1;
-        let u = f * p1_to_origin.dot(&direction_cross_e2);
-
-        if !(0.0..=1.0).contains(&u) {
-            return Ok(vec![]);
-        }
-
-        let origin_cross_e1 = p1_to_origin.cross(&self.e1);
-        let v = f * ray.direction.dot(&origin_cross_e1);
-
-        if v < 0.0 || u + v > 1.0 {
-            return Ok(vec![]);
-        }
-
-        let t = f * self.e2.dot(&origin_cross_e1);
-        Ok(vec![Intersection::new(t, self)])
+        Ok(self
+            .intersect_uv(ray)?
+            .map(|(t, _, _)| Intersection::new(t, self))
+            .into_iter()
+            .collect())
     }
 
     fn normal_at(&self, _world_point: Point3<f64>) -> Result<Vector3<f64>, TransformError> {
