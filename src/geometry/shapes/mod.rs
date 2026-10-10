@@ -4,13 +4,15 @@ mod double_napped_cone;
 mod group;
 mod plane;
 mod sphere;
+mod triangle;
 
 pub use cube::{Cube, CubeBuilder};
 pub use cylinder::{Cylinder, CylinderBuilder};
 pub use double_napped_cone::{DoubleNappedCone, DoubleNappedConeBuilder};
-pub use group::{Group, GroupBuilder, GroupError};
+pub use group::{Group, GroupBuilder, GroupError, ObjImportError};
 pub use plane::{Plane, PlaneBuilder};
 pub use sphere::{Sphere, SphereBuilder};
+pub use triangle::{Triangle, TriangleBuilder};
 
 use crate::{
     geometry::{

@@ -1,4 +1,4 @@
-use super::{Intersection, ParentLink, Shape, ShapeRef};
+use super::{Intersection, ParentLink, Shape, ShapeRef, Triangle};
 use crate::{
     geometry::{
         ray::Ray,
@@ -7,7 +7,8 @@ use crate::{
     scene::material::Material,
 };
 use nalgebra::{Point3, Vector3};
-use std::rc::Rc;
+use obj::raw::{object::Polygon, parse_obj};
+use std::{fs::File, io::BufReader, path::Path, rc::Rc};
 use thiserror::Error;
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -16,6 +17,15 @@ pub enum GroupError {
     DuplicateChild { index: usize },
     #[error("Child at index {index} already has a live parent")]
     ChildAlreadyHasParent { index: usize },
+}
+
+/// Errors encountered while loading an OBJ file into a group.
+#[derive(Debug, Error)]
+pub enum ObjImportError {
+    #[error(transparent)]
+    Obj(#[from] obj::ObjError),
+    #[error(transparent)]
+    Group(#[from] GroupError),
 }
 
 /// A shape that owns an immutable list of children and has no surface of its own.
@@ -34,6 +44,49 @@ pub struct Group {
 impl Group {
     pub fn builder() -> GroupBuilder {
         GroupBuilder::default()
+    }
+
+    /// Loads a Wavefront OBJ file as a group of flat triangles.
+    ///
+    /// Faces are fan-triangulated in file order, preserving vertex winding. As
+    /// in the book, this assumes convex polygons; triangulate concave faces
+    /// before importing. OBJ groups are flattened, and normals, texture
+    /// coordinates, materials, points and lines are ignored. All shapes use
+    /// identity transforms and default materials.
+    ///
+    /// Returns file I/O, OBJ parsing or group construction errors to the caller.
+    pub fn from_obj(path: impl AsRef<Path>) -> Result<Rc<Self>, ObjImportError> {
+        let file = File::open(path).map_err(obj::ObjError::from)?;
+        let raw = parse_obj(BufReader::new(file))?;
+        let point = |index: usize| {
+            let (x, y, z, _) = raw.positions[index];
+            Point3::new(f64::from(x), f64::from(y), f64::from(z))
+        };
+        let mut group = Self::builder();
+
+        for polygon in raw.polygons {
+            let indices: Vec<usize> = match polygon {
+                Polygon::P(indices) => indices,
+                Polygon::PT(vertices) | Polygon::PN(vertices) => {
+                    vertices.into_iter().map(|(position, _)| position).collect()
+                }
+                Polygon::PTN(vertices) => vertices
+                    .into_iter()
+                    .map(|(position, _, _)| position)
+                    .collect(),
+            };
+
+            // The parser guarantees at least three valid position indices.
+            for edge in indices[1..].windows(2) {
+                group = group.child(Rc::new(Triangle::new(
+                    point(indices[0]),
+                    point(edge[0]),
+                    point(edge[1]),
+                )));
+            }
+        }
+
+        Ok(group.build()?)
     }
 
     /// Validates every child before attaching any parent links.
@@ -157,6 +210,119 @@ mod tests {
     use approx::assert_abs_diff_eq;
     use nalgebra::{Scale3, Translation3};
     use std::f64::consts::FRAC_PI_2;
+
+    fn load_obj_source(source: &str) -> Result<Rc<Group>, ObjImportError> {
+        let path = std::env::temp_dir().join(format!("merlin-{}.obj", uuid::Uuid::new_v4()));
+        std::fs::write(&path, source).unwrap();
+        let result = Group::from_obj(&path);
+        std::fs::remove_file(path).unwrap();
+        result
+    }
+
+    #[test]
+    fn test_loading_obj_triangles_and_flattening_groups() {
+        let group = load_obj_source(
+            "v 0 1 0\nv -1 0 0\nv 1 0 0\nv 0 1 2\nv -1 0 2\nv 1 0 2\n\
+             g First\nf 1 2 3\ng Second\nf 4 5 6\n",
+        )
+        .unwrap();
+
+        assert_eq!(group.children().len(), 2);
+        assert_eq!(*group.transform(), Transform::identity());
+        assert!(group.parent().is_none());
+        let parent: ShapeRef = group.clone();
+        for child in group.children() {
+            assert!(Rc::ptr_eq(&child.parent().unwrap(), &parent));
+            assert_eq!(*child.transform(), Transform::identity());
+            assert_eq!(*child.material(), Material::default());
+        }
+
+        let ray = Ray::new(Point3::new(0.0, 0.5, -2.0), Vector3::new(0.0, 0.0, 1.0));
+        let xs = group.intersect(&ray).unwrap();
+        assert_eq!(xs.len(), 2);
+        for (index, t) in [2.0, 4.0].into_iter().enumerate() {
+            assert_abs_diff_eq!(xs[index].t, t);
+            assert!(std::ptr::addr_eq(xs[index].object, group.children()[index].as_ref()));
+            assert_eq!(
+                xs[index].object.normal_at(ray.origin + ray.direction * t).unwrap(),
+                Vector3::new(0.0, 0.0, -1.0)
+            );
+        }
+        let miss = Ray::new(Point3::new(1.0, 1.0, -2.0), ray.direction);
+        assert!(group.intersect(&miss).unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_loading_obj_face_formats_without_using_normals_or_texture_coordinates() {
+        for face in [
+            "1 2 3",
+            "1/3 2/2 3/1",
+            "1//1 2//1 3//1",
+            "1/3/1 2/2/1 3/1/1",
+        ] {
+            let group = load_obj_source(&format!(
+                "v 0 1 0\nv -1 0 0\nv 1 0 0\n\
+                 vt 0 0\nvt 1 0\nvt 0 1\nvn 1 0 0\nf {face}\n"
+            ))
+            .unwrap();
+            assert_eq!(group.children().len(), 1);
+            let ray = Ray::new(Point3::new(0.0, 0.5, -2.0), Vector3::new(0.0, 0.0, 1.0));
+            let xs = group.intersect(&ray).unwrap();
+            assert_eq!(xs.len(), 1);
+            assert_abs_diff_eq!(xs[0].t, 2.0);
+            assert_eq!(
+                xs[0].object.normal_at(Point3::new(0.0, 0.5, 0.0)).unwrap(),
+                Vector3::new(0.0, 0.0, -1.0)
+            );
+        }
+    }
+
+    #[test]
+    fn test_fan_triangulating_an_obj_polygon_with_relative_indices() {
+        let group = load_obj_source(
+            "v -1 1 0\nv -1 0 0\nv 1 0 0\nv 1 1 0\nv 0 2 0\nf -5 -4 -3 -2 -1\n",
+        )
+        .unwrap();
+        assert_eq!(group.children().len(), 3);
+
+        // One ray through the interior of each triangle in the fan.
+        for (index, (x, y)) in [(-0.5, 0.25), (0.5, 0.75), (0.0, 1.5)].into_iter().enumerate() {
+            let ray = Ray::new(Point3::new(x, y, -2.0), Vector3::new(0.0, 0.0, 1.0));
+            let xs = group.intersect(&ray).unwrap();
+            assert_eq!(xs.len(), 1);
+            assert_abs_diff_eq!(xs[0].t, 2.0);
+            assert!(std::ptr::addr_eq(xs[0].object, group.children()[index].as_ref()));
+        }
+    }
+
+    #[test]
+    fn test_loading_obj_without_faces() {
+        for source in ["", "# no faces\nv 0 0 0\nv 1 0 0\np 1\nl 1 2\n"] {
+            assert!(load_obj_source(source).unwrap().children().is_empty());
+        }
+    }
+
+    #[test]
+    fn test_loading_obj_reports_io_errors() {
+        let path = std::env::temp_dir().join(format!("merlin-missing-{}.obj", uuid::Uuid::new_v4()));
+        assert!(matches!(
+            Group::from_obj(path),
+            Err(ObjImportError::Obj(obj::ObjError::Io(error)))
+                if error.kind() == std::io::ErrorKind::NotFound
+        ));
+    }
+
+    #[test]
+    fn test_loading_obj_reports_invalid_vertices_faces_and_indices() {
+        for source in [
+            "v invalid 0 0\n",
+            "v 0 0 0\nf 1 1\n",
+            "v 0 0 0\nf 0 1 1\n",
+            "v 0 0 0\nf 1 2 3\n",
+        ] {
+            assert!(matches!(load_obj_source(source), Err(ObjImportError::Obj(_))));
+        }
+    }
 
     #[test]
     fn test_creating_a_new_group() {
