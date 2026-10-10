@@ -1,22 +1,35 @@
+//! Parametric rays used for intersections and secondary light paths.
+
 use crate::geometry::transforms::Transform;
 
 use nalgebra::{Point3, Vector3};
 
+/// A parametric ray: `origin + direction * t`.
+///
+/// The direction is not normalized automatically; `t` is a distance only when
+/// the direction has unit length.
 #[derive(Debug, Clone)]
 pub struct Ray {
+    /// Starting point of the ray.
     pub origin: Point3<f64>,
+    /// Direction and parameter scale of the ray.
     pub direction: Vector3<f64>,
 }
 
 impl Ray {
+    /// Creates a ray without normalizing its direction.
     pub fn new(origin: Point3<f64>, direction: Vector3<f64>) -> Self {
         Ray { origin, direction }
     }
 
+    /// Returns the point at parameter `t`, which may be negative.
     pub fn position(&self, t: f64) -> Point3<f64> {
         self.origin + (self.direction * t)
     }
 
+    /// Transforms the origin as a point and the direction as a vector.
+    ///
+    /// Translation affects only the origin; the direction is not renormalized.
     pub fn transform(&self, transform: &Transform) -> Self {
         Self {
             origin: transform.apply(self.origin),

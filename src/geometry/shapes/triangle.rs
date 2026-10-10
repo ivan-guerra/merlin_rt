@@ -26,10 +26,12 @@ pub struct Triangle {
 }
 
 impl Triangle {
+    /// Creates a builder initialized with [`Triangle::default`].
     pub fn builder() -> TriangleBuilder {
         TriangleBuilder::default()
     }
 
+    /// Creates a triangle with object-space vertices, identity transform, and default material.
     pub fn new(p1: Point3<f64>, p2: Point3<f64>, p3: Point3<f64>) -> Self {
         let e1 = p2 - p1;
         let e2 = p3 - p1;
@@ -51,26 +53,34 @@ impl Triangle {
         }
     }
 
+    /// Returns the first object-space vertex.
     pub fn p1(&self) -> Point3<f64> {
         self.p1
     }
 
+    /// Returns the second object-space vertex.
     pub fn p2(&self) -> Point3<f64> {
         self.p2
     }
 
+    /// Returns the third object-space vertex.
     pub fn p3(&self) -> Point3<f64> {
         self.p3
     }
 
+    /// Returns the object-space edge `p2 - p1`.
     pub fn e1(&self) -> Vector3<f64> {
         self.e1
     }
 
+    /// Returns the object-space edge `p3 - p1`.
     pub fn e2(&self) -> Vector3<f64> {
         self.e2
     }
 
+    /// Returns the normalized object-space normal `(p3 - p1) × (p2 - p1)`.
+    ///
+    /// Degenerate triangles return a zero vector.
     pub fn normal(&self) -> Vector3<f64> {
         self.normal
     }
@@ -123,6 +133,10 @@ impl Default for Triangle {
     }
 }
 
+/// A builder for [`Triangle`].
+///
+/// Default vertices are `(0, 1, 0)`, `(-1, 0, 0)`, and `(1, 0, 0)`, with an
+/// identity transform and default material.
 #[derive(Debug, Default)]
 #[must_use = "call build() to create the shape"]
 pub struct TriangleBuilder {
@@ -130,6 +144,7 @@ pub struct TriangleBuilder {
 }
 
 impl TriangleBuilder {
+    /// Sets the object-space vertices and recomputes cached geometry.
     pub fn vertices(mut self, p1: Point3<f64>, p2: Point3<f64>, p3: Point3<f64>) -> Self {
         self.shape = Triangle {
             transform: self.shape.transform,
@@ -139,16 +154,19 @@ impl TriangleBuilder {
         self
     }
 
+    /// Sets the object-to-parent transform, replacing any previous transform.
     pub fn transform(mut self, transform: Transform) -> Self {
         self.shape.transform = transform;
         self
     }
 
+    /// Sets the surface material.
     pub fn material(mut self, material: Material) -> Self {
         self.shape.material = material;
         self
     }
 
+    /// Returns the configured shape.
     pub fn build(self) -> Triangle {
         self.shape
     }

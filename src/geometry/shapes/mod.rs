@@ -1,3 +1,13 @@
+//! Surface primitives, hierarchical groups, and ray intersections.
+//!
+//! Construct shapes with their builders, then place them in a
+//! [`World`](crate::scene::world::World). Builders start with identity transforms
+//! and default materials. Groups own shared children; their transforms compose
+//! through parent links, but their materials are not inherited.
+//!
+//! [`Shape::intersect`] accepts a ray in parent space, while normals and lighting
+//! use world-space inputs. Singular transforms return [`TransformError`].
+
 mod cube;
 mod cylinder;
 mod double_napped_cone;
@@ -61,17 +71,29 @@ impl PartialEq for ParentLink {
     }
 }
 
+/// A renderable surface or a group of child shapes.
+///
+/// Implementations expose a stable parent link and convert parent-space rays
+/// to object space. Use [`Self::world_to_object`] and [`Self::normal_to_world`]
+/// when computing normals so ancestor transforms are respected.
 pub trait Shape: Debug {
+    /// Returns the transform from object space to parent space.
     fn transform(&self) -> &Transform;
+    /// Returns this shape's material; group materials do not affect children.
     fn material(&self) -> &Material;
     /// Must return this shape's own, stable parent link.
     fn parent_link(&self) -> &ParentLink;
 
+    /// Resolves the parent, or returns `None` for a root or dropped parent.
     fn parent(&self) -> Option<ShapeRef> {
         self.parent_link().resolve()
     }
 
     /// Converts a world-space point through the entire ancestor chain.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if this shape or an ancestor has a singular transform.
     fn world_to_object(&self, point: Point3<f64>) -> Result<Point3<f64>, TransformError> {
         let point = match self.parent() {
             Some(parent) => parent.world_to_object(point)?,
@@ -81,6 +103,12 @@ pub trait Shape: Debug {
     }
 
     /// Converts an object-space normal through the entire ancestor chain.
+    ///
+    /// Nonzero normals are normalized after each inverse-transpose transform.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if this shape or an ancestor has a singular transform.
     fn normal_to_world(&self, normal: Vector3<f64>) -> Result<Vector3<f64>, TransformError> {
         let normal = self.transform().apply_transpose_inverse(normal)?;
         // Preserve a zero normal (for example, at a cone's apex).
@@ -91,13 +119,28 @@ pub trait Shape: Debug {
         }
     }
 
-    /// The ray is in parent space (world space for a root shape).
-    /// Apply only this shape's inverse transform, not its ancestors' transforms.
+    /// Intersects a parent-space ray with this shape.
+    ///
+    /// Parent space is world space for a root shape. Apply only this shape's
+    /// inverse transform, not its ancestors' transforms.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a transform needed for intersection is singular.
     fn intersect(&self, ray: &Ray) -> Result<Vec<Intersection<'_>>, TransformError>;
+    /// Returns a world-space surface normal at `world_point`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a singular transform or a group with no surface.
     fn normal_at(&self, world_point: Point3<f64>) -> Result<Vector3<f64>, TransformError>;
 
     /// Computes a world-space normal using any per-intersection data.
     /// Shapes without interpolated normals can ignore the hit.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a singular transform or a group with no surface.
     fn normal_at_hit(
         &self,
         world_point: Point3<f64>,
@@ -106,6 +149,14 @@ pub trait Shape: Debug {
         self.normal_at(world_point)
     }
 
+    /// Evaluates Phong lighting with world-space inputs and unit eye/normal vectors.
+    ///
+    /// Patterns override the material color. A shadowed point receives ambient
+    /// light only; reflection and refraction are handled by the world.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a transform needed to sample a pattern is singular.
     fn lighting(
         &self,
         light: PointLight,
@@ -152,9 +203,12 @@ pub trait Shape: Debug {
     }
 }
 
+/// A ray parameter and the intersected leaf shape, with optional triangle weights.
 #[derive(Debug)]
 pub struct Intersection<'a> {
+    /// Ray parameter; negative values lie behind the ray origin.
     pub t: f64,
+    /// The intersected shape, borrowed from the scene.
     pub object: &'a dyn Shape,
     /// Barycentric weight of a triangle's second vertex (not a texture coordinate).
     pub u: Option<f64>,
@@ -163,6 +217,7 @@ pub struct Intersection<'a> {
 }
 
 impl<'a> Intersection<'a> {
+    /// Creates an intersection without barycentric weights.
     pub fn new(t: f64, object: &'a dyn Shape) -> Self {
         Self {
             t,
@@ -182,6 +237,9 @@ impl<'a> Intersection<'a> {
         }
     }
 
+    /// Sorts intersections in place by `t` and returns the first with `t >= 0`.
+    ///
+    /// Returns `None` when no intersection is in front of the ray origin.
     pub fn hit(intersections: &mut [Self]) -> Option<&Self> {
         intersections.sort_by(|a, b| a.t.total_cmp(&b.t));
         intersections

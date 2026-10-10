@@ -10,6 +10,10 @@ use crate::{
 use nalgebra::{Point3, Vector3};
 use uuid::Uuid;
 
+/// A sphere with an object-space center and radius.
+///
+/// Defaults to a unit sphere at the origin with an identity transform and
+/// default material.
 #[derive(Debug, PartialEq)]
 pub struct Sphere {
     parent: ParentLink,
@@ -21,10 +25,14 @@ pub struct Sphere {
 }
 
 impl Sphere {
+    /// Creates a builder initialized with [`Sphere::default`].
     pub fn builder() -> SphereBuilder {
         SphereBuilder::default()
     }
 
+    /// Creates a sphere with explicit object-space geometry and surface settings.
+    ///
+    /// Use a positive radius; parameters are stored without validation.
     pub fn new(radius: f64, center: Point3<f64>, transform: Transform, material: Material) -> Self {
         Self::builder()
             .radius(radius)
@@ -48,6 +56,7 @@ impl Default for Sphere {
     }
 }
 
+/// A builder for [`Sphere`]; see the shape for its defaults.
 #[derive(Debug, Default)]
 #[must_use = "call build() to create the shape"]
 pub struct SphereBuilder {
@@ -55,26 +64,31 @@ pub struct SphereBuilder {
 }
 
 impl SphereBuilder {
+    /// Sets the object-space radius, which should be positive; defaults to `1.0`.
     pub fn radius(mut self, radius: f64) -> Self {
         self.shape.radius = radius;
         self
     }
 
+    /// Sets the object-space center; defaults to the origin.
     pub fn center(mut self, center: Point3<f64>) -> Self {
         self.shape.center = center;
         self
     }
 
+    /// Sets the object-to-parent transform, replacing any previous transform.
     pub fn transform(mut self, transform: Transform) -> Self {
         self.shape.transform = transform;
         self
     }
 
+    /// Sets the surface material.
     pub fn material(mut self, material: Material) -> Self {
         self.shape.material = material;
         self
     }
 
+    /// Returns the configured shape.
     pub fn build(self) -> Sphere {
         self.shape
     }

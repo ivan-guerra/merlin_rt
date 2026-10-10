@@ -10,6 +10,9 @@ use crate::{
 
 use nalgebra::{Point3, Vector3};
 
+/// An infinite XZ plane at object-space `y = 0`, with a positive-Y normal.
+///
+/// Defaults to an identity transform and default material.
 #[derive(Debug, PartialEq)]
 pub struct Plane {
     parent: ParentLink,
@@ -18,6 +21,7 @@ pub struct Plane {
 }
 
 impl Plane {
+    /// Creates a builder initialized with [`Plane::default`].
     pub fn builder() -> PlaneBuilder {
         PlaneBuilder::default()
     }
@@ -33,6 +37,7 @@ impl Default for Plane {
     }
 }
 
+/// A builder for [`Plane`]; see the shape for its defaults.
 #[derive(Debug, Default)]
 #[must_use = "call build() to create the shape"]
 pub struct PlaneBuilder {
@@ -40,16 +45,19 @@ pub struct PlaneBuilder {
 }
 
 impl PlaneBuilder {
+    /// Sets the object-to-parent transform, replacing any previous transform.
     pub fn transform(mut self, transform: Transform) -> Self {
         self.shape.transform = transform;
         self
     }
 
+    /// Sets the surface material.
     pub fn material(mut self, material: Material) -> Self {
         self.shape.material = material;
         self
     }
 
+    /// Returns the configured shape.
     pub fn build(self) -> Plane {
         self.shape
     }

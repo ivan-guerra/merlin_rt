@@ -20,10 +20,15 @@ pub struct SmoothTriangle {
 }
 
 impl SmoothTriangle {
+    /// Creates a builder initialized with [`SmoothTriangle::default`].
     pub fn builder() -> SmoothTriangleBuilder {
         SmoothTriangleBuilder::default()
     }
 
+    /// Creates a triangle from object-space vertices and corresponding normals.
+    ///
+    /// Normals are stored without normalization. Uses an identity transform and
+    /// default material.
     pub fn new(
         p1: Point3<f64>,
         p2: Point3<f64>,
@@ -40,34 +45,42 @@ impl SmoothTriangle {
         }
     }
 
+    /// Returns the first object-space vertex.
     pub fn p1(&self) -> Point3<f64> {
         self.triangle.p1()
     }
 
+    /// Returns the second object-space vertex.
     pub fn p2(&self) -> Point3<f64> {
         self.triangle.p2()
     }
 
+    /// Returns the third object-space vertex.
     pub fn p3(&self) -> Point3<f64> {
         self.triangle.p3()
     }
 
+    /// Returns the object-space edge `p2 - p1`.
     pub fn e1(&self) -> Vector3<f64> {
         self.triangle.e1()
     }
 
+    /// Returns the object-space edge `p3 - p1`.
     pub fn e2(&self) -> Vector3<f64> {
         self.triangle.e2()
     }
 
+    /// Returns the stored object-space normal at the first vertex.
     pub fn n1(&self) -> Vector3<f64> {
         self.n1
     }
 
+    /// Returns the stored object-space normal at the second vertex.
     pub fn n2(&self) -> Vector3<f64> {
         self.n2
     }
 
+    /// Returns the stored object-space normal at the third vertex.
     pub fn n3(&self) -> Vector3<f64> {
         self.n3
     }
@@ -83,6 +96,10 @@ impl Default for SmoothTriangle {
     }
 }
 
+/// A builder for [`SmoothTriangle`].
+///
+/// Uses the default [`Triangle`] vertices and `(0, 0, -1)` for each normal, with
+/// an identity transform and default material.
 #[derive(Debug)]
 #[must_use = "call build() to create the shape"]
 pub struct SmoothTriangleBuilder {
@@ -104,11 +121,13 @@ impl Default for SmoothTriangleBuilder {
 }
 
 impl SmoothTriangleBuilder {
+    /// Sets the object-space vertices and recomputes cached geometry.
     pub fn vertices(mut self, p1: Point3<f64>, p2: Point3<f64>, p3: Point3<f64>) -> Self {
         self.triangle = self.triangle.vertices(p1, p2, p3);
         self
     }
 
+    /// Sets object-space normals for `p1`, `p2`, and `p3`, without normalizing them.
     pub fn normals(mut self, n1: Vector3<f64>, n2: Vector3<f64>, n3: Vector3<f64>) -> Self {
         self.n1 = n1;
         self.n2 = n2;
@@ -116,16 +135,19 @@ impl SmoothTriangleBuilder {
         self
     }
 
+    /// Sets the object-to-parent transform, replacing any previous transform.
     pub fn transform(mut self, transform: Transform) -> Self {
         self.triangle = self.triangle.transform(transform);
         self
     }
 
+    /// Sets the surface material.
     pub fn material(mut self, material: Material) -> Self {
         self.triangle = self.triangle.material(material);
         self
     }
 
+    /// Returns the configured shape.
     pub fn build(self) -> SmoothTriangle {
         SmoothTriangle {
             triangle: self.triangle.build(),

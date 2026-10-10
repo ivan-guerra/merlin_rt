@@ -1,3 +1,5 @@
+//! Floating-point RGB colors and a row-major canvas with ASCII PPM export.
+
 use crate::EPSILON;
 use approx::abs_diff_eq;
 use nalgebra::Vector3;
@@ -7,31 +9,43 @@ use std::ops::{Add, Mul, Sub};
 use std::path::Path;
 use thiserror::Error;
 
+/// Errors when writing pixels or exporting a canvas.
 #[derive(Error, Debug)]
 pub enum CanvasError {
+    /// A pixel coordinate lies outside the canvas.
     #[error("Index out of bounds: {0}")]
     IndexOutOfBounds(String),
 
+    /// The output file could not be created or written.
     #[error("Failed to write PPM data: {0}")]
     IoError(#[from] std::io::Error),
 }
 
+/// An RGB color with floating-point channels, conventionally in `0.0..=1.0`.
+///
+/// Arithmetic is not clamped. Color multiplication is component-wise
+/// (the Hadamard product); scalar multiplication scales all channels. Equality
+/// uses an absolute per-channel tolerance of `1e-5`.
 #[derive(Debug, Clone, Copy)]
 pub struct Color(Vector3<f64>);
 
 impl Color {
+    /// Creates a color without clamping its red, green, and blue channels.
     pub const fn new(r: f64, g: f64, b: f64) -> Self {
         Color(Vector3::new(r, g, b))
     }
 
+    /// Returns the red channel.
     pub fn r(&self) -> f64 {
         self.0.x
     }
 
+    /// Returns the green channel.
     pub fn g(&self) -> f64 {
         self.0.y
     }
 
+    /// Returns the blue channel.
     pub fn b(&self) -> f64 {
         self.0.z
     }
@@ -97,6 +111,10 @@ impl Mul<Color> for f64 {
     }
 }
 
+/// A row-major image of floating-point colors.
+///
+/// Pixel coordinates are zero-based, with `(0, 0)` at the top left. X increases
+/// to the right and Y increases downward.
 #[derive(Debug)]
 pub struct Canvas {
     width: usize,
@@ -105,6 +123,7 @@ pub struct Canvas {
 }
 
 impl Canvas {
+    /// Creates a `width` × `height` canvas filled with black.
     pub fn new(width: usize, height: usize) -> Self {
         let pixels = vec![Color::new(0.0, 0.0, 0.0); width * height];
         Canvas {
@@ -114,14 +133,21 @@ impl Canvas {
         }
     }
 
+    /// Returns `(width, height)` in pixels.
     pub fn dimensions(&self) -> (usize, usize) {
         (self.width, self.height)
     }
 
+    /// Borrows the pixel at `(x, y)`, or returns `None` if out of bounds.
     pub fn pixel_at(&self, x: usize, y: usize) -> Option<&Color> {
         (x < self.width && y < self.height).then(|| &self.pixels[y * self.width + x])
     }
 
+    /// Replaces the color at `(x, y)`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CanvasError::IndexOutOfBounds`] if the coordinates are invalid.
     pub fn write_pixel(&mut self, x: usize, y: usize, color: Color) -> Result<(), CanvasError> {
         if x >= self.width || y >= self.height {
             return Err(CanvasError::IndexOutOfBounds(format!(
@@ -134,6 +160,24 @@ impl Canvas {
         Ok(())
     }
 
+    /// Writes an ASCII PPM (P3) image, creating or overwriting `filename`.
+    ///
+    /// Channels are scaled to 255, rounded, and clamped to `0..=255`, without
+    /// applying gamma correction. Pixel-data lines contain at most 70 characters.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CanvasError::IoError`] if the file cannot be created or written.
+    ///
+    /// ```no_run
+    /// use merlin_rt::rendering::canvas::{Canvas, Color};
+    /// use std::path::Path;
+    ///
+    /// let mut image = Canvas::new(2, 1);
+    /// image.write_pixel(0, 0, Color::new(1.0, 0.0, 0.0))?;
+    /// image.write_to_ppm(Path::new("red.ppm"))?;
+    /// # Ok::<(), merlin_rt::rendering::canvas::CanvasError>(())
+    /// ```
     pub fn write_to_ppm(&self, filename: &Path) -> Result<(), CanvasError> {
         let mut file = File::create(filename)?;
         let header = self.construct_ppm_header();

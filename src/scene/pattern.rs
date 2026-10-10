@@ -1,3 +1,9 @@
+//! Two-color procedural patterns with independent spatial transforms.
+//!
+//! All built-in patterns default to white (`a`), black (`b`), and an identity
+//! transform. Sampling occurs in pattern space, after undoing the object and
+//! pattern transforms.
+
 use crate::{
     EPSILON,
     geometry::transforms::{Transform, TransformError},
@@ -18,8 +24,20 @@ fn stable_floor(value: f64) -> i32 {
     }
 }
 
+/// A procedural color source sampled in pattern-local coordinates.
 pub trait Pattern: Debug {
+    /// Samples a pattern-local point without applying transforms.
+    ///
+    /// Despite the parameter name, `world_point` must already be in pattern space.
     fn pattern_at(&self, world_point: Point3<f64>) -> Color;
+    /// Samples a world-space point after undoing the object and pattern transforms.
+    ///
+    /// For grouped shapes, convert through the ancestor chain first and pass
+    /// an identity object transform, as [`Shape::lighting`](crate::geometry::shapes::Shape::lighting) does.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the object or pattern transform is singular.
     fn pattern_at_object(
         &self,
         object_transform: &Transform,
@@ -27,10 +45,14 @@ pub trait Pattern: Debug {
     ) -> Result<Color, TransformError>;
 }
 
+/// Alternating unit-width stripes along the pattern-space X axis.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct StripePattern {
+    /// First color; defaults to white.
     pub a: Color,
+    /// Second color; defaults to black.
     pub b: Color,
+    /// Pattern-to-object transform; defaults to identity.
     pub transform: Transform,
 }
 
@@ -64,10 +86,14 @@ impl Pattern for StripePattern {
     }
 }
 
+/// A linear gradient from `a` toward `b`, repeating each unit along X.
 #[derive(Debug)]
 pub struct GradientPattern {
+    /// First color; defaults to white.
     pub a: Color,
+    /// Second color; defaults to black.
     pub b: Color,
+    /// Pattern-to-object transform; defaults to identity.
     pub transform: Transform,
 }
 
@@ -99,10 +125,14 @@ impl Pattern for GradientPattern {
     }
 }
 
+/// Alternating unit-width rings around the Y axis in the pattern-space XZ plane.
 #[derive(Debug)]
 pub struct RingPattern {
+    /// First color; defaults to white.
     pub a: Color,
+    /// Second color; defaults to black.
     pub b: Color,
+    /// Pattern-to-object transform; defaults to identity.
     pub transform: Transform,
 }
 
@@ -137,10 +167,14 @@ impl Pattern for RingPattern {
     }
 }
 
+/// A three-dimensional checker pattern alternating colors in unit cubes.
 #[derive(Debug)]
 pub struct CheckerPattern {
+    /// First color; defaults to white.
     pub a: Color,
+    /// Second color; defaults to black.
     pub b: Color,
+    /// Pattern-to-object transform; defaults to identity.
     pub transform: Transform,
 }
 

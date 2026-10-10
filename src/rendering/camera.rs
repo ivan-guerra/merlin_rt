@@ -1,3 +1,5 @@
+//! Perspective cameras and single-sample, single-threaded rendering.
+
 use crate::{
     geometry::{
         ray::Ray,
@@ -10,15 +12,22 @@ use crate::{
 use nalgebra::Point3;
 use thiserror::Error;
 
+/// A coordinate-conversion or pixel-write failure during rendering.
 #[derive(Debug, Error)]
 pub enum RenderError {
+    /// A transform needed for ray generation or shading could not be inverted.
     #[error(transparent)]
     Transform(#[from] TransformError),
 
+    /// A rendered pixel could not be written to the canvas.
     #[error(transparent)]
     Canvas(#[from] CanvasError),
 }
 
+/// A perspective camera looking along negative Z in camera space.
+///
+/// Its transform maps world space to camera space. Rendering casts one ray
+/// through each pixel center, without antialiasing.
 #[derive(Debug, Clone)]
 pub struct Camera {
     hsize: usize,
@@ -31,6 +40,12 @@ pub struct Camera {
 }
 
 impl Camera {
+    /// Creates a camera with pixel dimensions, field of view, and view transform.
+    ///
+    /// Use nonzero dimensions, a field of view in radians between zero and π,
+    /// and an invertible world-to-camera transform. Inputs are not validated.
+    /// The field of view spans the larger image dimension; the smaller one is
+    /// adjusted to preserve the aspect ratio. See [`World::view_transform`].
     pub fn new(hsize: usize, vsize: usize, field_of_view: f64, transform: Transform) -> Self {
         let half_view = (field_of_view / 2.0).tan();
         let aspect = hsize as f64 / vsize as f64;
@@ -52,22 +67,34 @@ impl Camera {
         }
     }
 
+    /// Returns `(horizontal_size, vertical_size)` in pixels.
     pub fn dimensions(&self) -> (usize, usize) {
         (self.hsize, self.vsize)
     }
 
+    /// Returns the field of view in radians.
     pub fn field_of_view(&self) -> f64 {
         self.field_of_view
     }
 
+    /// Borrows the world-to-camera transform.
     pub fn transform(&self) -> &Transform {
         &self.transform
     }
 
+    /// Replaces the world-to-camera transform.
     pub fn set_transform(&mut self, transform: Transform) {
         self.transform = transform;
     }
 
+    /// Returns a world-space ray through the center of pixel `(px, py)`.
+    ///
+    /// Coordinates start at the top left and are not bounds-checked. The
+    /// returned direction is normalized.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the camera transform is singular.
     pub fn ray_for_pixel(&self, px: usize, py: usize) -> Result<Ray, TransformError> {
         let xoffset = (px as f64 + 0.5) * self.pixel_size;
         let yoffset = (py as f64 + 0.5) * self.pixel_size;
@@ -84,6 +111,13 @@ impl Camera {
         Ok(Ray::new(origin, direction))
     }
 
+    /// Renders `world` sequentially into a new canvas.
+    ///
+    /// Secondary rays use [`MAX_RECURSION_DEPTH`] as their recursion budget.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a required transform is singular or a pixel write fails.
     pub fn render(&self, world: &World) -> Result<Canvas, RenderError> {
         let mut image = Canvas::new(self.hsize, self.vsize);
 

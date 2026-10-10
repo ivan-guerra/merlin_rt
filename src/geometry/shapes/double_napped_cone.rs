@@ -10,6 +10,11 @@ use crate::{
 
 use nalgebra::{Point3, Vector3};
 
+/// A double cone around the object-space Y axis: `x² + z² = y²`.
+///
+/// The apex is at the origin and the radius at height `y` is `abs(y)`. Defaults
+/// to infinite Y bounds, open ends, an identity transform, and a default
+/// material. Set finite bounds before enabling end caps.
 #[derive(Debug)]
 pub struct DoubleNappedCone {
     parent: ParentLink,
@@ -21,10 +26,15 @@ pub struct DoubleNappedCone {
 }
 
 impl DoubleNappedCone {
+    /// Creates a builder initialized with [`DoubleNappedCone::default`].
     pub fn builder() -> DoubleNappedConeBuilder {
         DoubleNappedConeBuilder::default()
     }
 
+    /// Creates a shape with explicit Y bounds, cap state, transform, and material.
+    ///
+    /// Use `minimum < maximum` and finite bounds for a closed shape. Parameters
+    /// are stored without validation.
     pub fn new(
         minimum: f64,
         maximum: f64,
@@ -82,6 +92,7 @@ impl Default for DoubleNappedCone {
     }
 }
 
+/// A builder for [`DoubleNappedCone`]; see the shape for its defaults.
 #[derive(Debug, Default)]
 #[must_use = "call build() to create the shape"]
 pub struct DoubleNappedConeBuilder {
@@ -89,31 +100,39 @@ pub struct DoubleNappedConeBuilder {
 }
 
 impl DoubleNappedConeBuilder {
+    /// Sets the lower object-space Y bound; defaults to negative infinity.
     pub fn minimum(mut self, minimum: f64) -> Self {
         self.shape.minimum = minimum;
         self
     }
 
+    /// Sets the upper object-space Y bound; defaults to positive infinity.
     pub fn maximum(mut self, maximum: f64) -> Self {
         self.shape.maximum = maximum;
         self
     }
 
+    /// Enables or disables end caps; defaults to `false`.
+    ///
+    /// Use finite Y bounds when enabling caps.
     pub fn closed(mut self, closed: bool) -> Self {
         self.shape.closed = closed;
         self
     }
 
+    /// Sets the object-to-parent transform, replacing any previous transform.
     pub fn transform(mut self, transform: Transform) -> Self {
         self.shape.transform = transform;
         self
     }
 
+    /// Sets the surface material.
     pub fn material(mut self, material: Material) -> Self {
         self.shape.material = material;
         self
     }
 
+    /// Returns the configured shape.
     pub fn build(self) -> DoubleNappedCone {
         self.shape
     }

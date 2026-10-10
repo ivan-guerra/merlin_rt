@@ -1,53 +1,74 @@
+//! Homogeneous transforms for points and vectors. Angles are in radians.
+
 use nalgebra::{Matrix4, Point3, Rotation3, Scale3, Translation3, Vector3, Vector4};
 use thiserror::Error;
 
+/// Failures when converting coordinates or requesting a surface normal.
 #[derive(Error, Debug)]
 pub enum TransformError {
+    /// The transform is singular and has no inverse.
     #[error("Failed to invert transformation matrix")]
     MatrixInversionError,
+    /// A normal was requested for a group, which has no surface.
     #[error("Groups have no surface normal")]
     UndefinedNormal,
 }
 
+/// A principal axis for rotation.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Axis {
+    /// The X axis.
     X,
+    /// The Y axis.
     Y,
+    /// The Z axis.
     Z,
 }
 
+/// A homogeneous 4×4 transform for points and vectors.
+///
+/// Construction does not check invertibility. Operations that need an inverse
+/// return an error for singular matrices, such as a scale with a zero component.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Transform {
     matrix: Matrix4<f64>,
 }
 
 impl Transform {
+    /// Borrows the underlying homogeneous matrix.
     pub fn matrix(&self) -> &Matrix4<f64> {
         &self.matrix
     }
 
+    /// Returns a transform that leaves points and vectors unchanged.
     pub fn identity() -> Self {
         Self {
             matrix: Matrix4::identity(),
         }
     }
 
+    /// Wraps a homogeneous matrix without validating it.
     pub fn from_matrix(matrix: Matrix4<f64>) -> Self {
         Self { matrix }
     }
 
+    /// Creates a translation; vectors are unaffected.
     pub fn translation(translation: Translation3<f64>) -> Self {
         Self {
             matrix: translation.to_homogeneous(),
         }
     }
 
+    /// Creates an axis-aligned scale.
     pub fn scale(scale: Scale3<f64>) -> Self {
         Self {
             matrix: scale.to_homogeneous(),
         }
     }
 
+    /// Reflects across the plane through the origin with the given normal.
+    ///
+    /// The normal is normalized internally and must be nonzero.
     pub fn reflection(normal: Vector3<f64>) -> Self {
         let normal = normal.normalize();
 
@@ -73,6 +94,7 @@ impl Transform {
         }
     }
 
+    /// Rotates around `axis` by `angle` radians using the right-hand rule.
     pub fn rotation(axis: Axis, angle: f64) -> Self {
         let rotation = match axis {
             Axis::X => Rotation3::from_axis_angle(&Vector3::x_axis(), angle),
@@ -85,6 +107,9 @@ impl Transform {
         }
     }
 
+    /// Creates a shear with coefficients named by destination and source axis.
+    ///
+    /// For example, `xy` adds `xy * y` to the X coordinate.
     pub fn shear(xy: f64, xz: f64, yx: f64, yz: f64, zx: f64, zy: f64) -> Self {
         Self {
             matrix: Matrix4::from_row_slice(&[
@@ -93,6 +118,18 @@ impl Transform {
         }
     }
 
+    /// Composes transforms in the order supplied; an empty sequence is identity.
+    ///
+    /// ```
+    /// use merlin_rt::geometry::transforms::Transform;
+    /// use nalgebra::{Point3, Scale3, Translation3};
+    ///
+    /// let transform = Transform::sequence([
+    ///     Transform::scale(Scale3::new(2.0, 2.0, 2.0)),
+    ///     Transform::translation(Translation3::new(1.0, 0.0, 0.0)),
+    /// ]);
+    /// assert_eq!(transform.apply(Point3::new(1.0, 0.0, 0.0)), Point3::new(3.0, 0.0, 0.0));
+    /// ```
     pub fn sequence(transforms: impl IntoIterator<Item = Self>) -> Self {
         transforms
             .into_iter()
@@ -101,14 +138,27 @@ impl Transform {
             })
     }
 
+    /// Applies this transform to a point or vector.
     pub fn apply<T: Transformable>(&self, value: T) -> T {
         value.apply_matrix(&self.matrix)
     }
 
+    /// Applies the inverse transform.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TransformError::MatrixInversionError`] if the matrix is singular.
     pub fn apply_inverse<T: Transformable>(&self, value: T) -> Result<T, TransformError> {
         Ok(value.apply_matrix(&self.inverse()?))
     }
 
+    /// Applies the inverse transpose, as used to transform surface normals.
+    ///
+    /// The result is not normalized.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TransformError::MatrixInversionError`] if the matrix is singular.
     pub fn apply_transpose_inverse<T: Transformable>(&self, value: T) -> Result<T, TransformError> {
         Ok(value.apply_matrix(&self.inverse()?.transpose()))
     }
@@ -120,7 +170,12 @@ impl Transform {
     }
 }
 
+/// A value that can be transformed by a homogeneous matrix.
+///
+/// Points use a homogeneous component of one and divide by the resulting W;
+/// vectors use zero, so translation has no effect on them.
 pub trait Transformable: Sized {
+    /// Applies `matrix` using the homogeneous representation of this value.
     fn apply_matrix(self, matrix: &Matrix4<f64>) -> Self;
 }
 

@@ -30,6 +30,9 @@ fn check_axis(origin: f64, direction: f64) -> (f64, f64) {
     }
 }
 
+/// An axis-aligned cube spanning `-1..=1` on each object-space axis.
+///
+/// Defaults to an identity transform and default material.
 #[derive(Debug)]
 pub struct Cube {
     parent: ParentLink,
@@ -48,10 +51,12 @@ impl Default for Cube {
 }
 
 impl Cube {
+    /// Creates a builder initialized with [`Cube::default`].
     pub fn builder() -> CubeBuilder {
         CubeBuilder::default()
     }
 
+    /// Creates a cube with the supplied material and object-to-parent transform.
     pub fn new(material: Material, transform: Transform) -> Self {
         Self::builder()
             .transform(transform)
@@ -60,6 +65,7 @@ impl Cube {
     }
 }
 
+/// A builder for [`Cube`]; see the shape for its defaults.
 #[derive(Debug, Default)]
 #[must_use = "call build() to create the shape"]
 pub struct CubeBuilder {
@@ -67,16 +73,19 @@ pub struct CubeBuilder {
 }
 
 impl CubeBuilder {
+    /// Sets the object-to-parent transform, replacing any previous transform.
     pub fn transform(mut self, transform: Transform) -> Self {
         self.shape.transform = transform;
         self
     }
 
+    /// Sets the surface material.
     pub fn material(mut self, material: Material) -> Self {
         self.shape.material = material;
         self
     }
 
+    /// Returns the configured shape.
     pub fn build(self) -> Cube {
         self.shape
     }

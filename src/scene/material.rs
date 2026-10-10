@@ -1,19 +1,48 @@
+//! Phong surface properties, procedural patterns, reflection, and refraction.
+
 use crate::{EPSILON, rendering::canvas::Color, scene::pattern::Pattern};
 
+/// Phong lighting properties and recursive reflection/refraction settings.
+///
+/// Use struct update syntax to override selected defaults:
+///
+/// ```
+/// use merlin_rt::{rendering::canvas::Color, scene::material::Material};
+///
+/// let material = Material {
+///     color: Color::new(0.2, 0.6, 0.9),
+///     reflective: 0.3,
+///     ..Material::default()
+/// };
+/// assert_eq!(material.refractive_index, 1.0);
+/// ```
+///
+/// Coefficients are not validated. Equality compares only color, ambient,
+/// diffuse, specular, and shininess, with a floating-point tolerance.
 #[derive(Debug)]
 pub struct Material {
+    /// Base surface color, used when no pattern is set; defaults to white.
     pub color: Color,
+    /// Ambient-light coefficient; defaults to `0.1`.
     pub ambient: f64,
+    /// Diffuse-light coefficient; defaults to `0.9`.
     pub diffuse: f64,
+    /// Specular-highlight coefficient; defaults to `0.9`.
     pub specular: f64,
+    /// Specular exponent; larger values give smaller highlights. Defaults to `200.0`.
     pub shininess: f64,
+    /// Reflection weight, conventionally `0.0..=1.0`; defaults to `0.0`.
     pub reflective: f64,
+    /// Refraction weight, conventionally `0.0..=1.0`; defaults to `0.0` (opaque).
     pub transparency: f64,
+    /// Positive optical index; defaults to `1.0` (air). Glass is typically `1.5`.
     pub refractive_index: f64,
+    /// Optional procedural color source overriding `color`; defaults to `None`.
     pub pattern: Option<Box<dyn Pattern>>,
 }
 
 impl Material {
+    /// Creates a material with all properties explicitly supplied, without validation.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         color: Color,

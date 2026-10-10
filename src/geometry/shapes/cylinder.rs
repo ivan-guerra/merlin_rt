@@ -11,6 +11,10 @@ use crate::{
 use approx::abs_diff_eq;
 use nalgebra::{Point3, Vector3};
 
+/// A unit-radius cylinder around the object-space Y axis.
+///
+/// Defaults to infinite Y bounds, open ends, an identity transform, and a
+/// default material. Set finite bounds before enabling end caps.
 #[derive(Debug)]
 pub struct Cylinder {
     parent: ParentLink,
@@ -22,10 +26,15 @@ pub struct Cylinder {
 }
 
 impl Cylinder {
+    /// Creates a builder initialized with [`Cylinder::default`].
     pub fn builder() -> CylinderBuilder {
         CylinderBuilder::default()
     }
 
+    /// Creates a shape with explicit Y bounds, cap state, transform, and material.
+    ///
+    /// Use `minimum < maximum` and finite bounds for a closed shape. Parameters
+    /// are stored without validation.
     pub fn new(
         minimum: f64,
         maximum: f64,
@@ -82,6 +91,7 @@ impl Default for Cylinder {
     }
 }
 
+/// A builder for [`Cylinder`]; see the shape for its defaults.
 #[derive(Debug, Default)]
 #[must_use = "call build() to create the shape"]
 pub struct CylinderBuilder {
@@ -89,31 +99,39 @@ pub struct CylinderBuilder {
 }
 
 impl CylinderBuilder {
+    /// Sets the lower object-space Y bound; defaults to negative infinity.
     pub fn minimum(mut self, minimum: f64) -> Self {
         self.shape.minimum = minimum;
         self
     }
 
+    /// Sets the upper object-space Y bound; defaults to positive infinity.
     pub fn maximum(mut self, maximum: f64) -> Self {
         self.shape.maximum = maximum;
         self
     }
 
+    /// Enables or disables end caps; defaults to `false`.
+    ///
+    /// Use finite Y bounds when enabling caps.
     pub fn closed(mut self, closed: bool) -> Self {
         self.shape.closed = closed;
         self
     }
 
+    /// Sets the object-to-parent transform, replacing any previous transform.
     pub fn transform(mut self, transform: Transform) -> Self {
         self.shape.transform = transform;
         self
     }
 
+    /// Sets the surface material.
     pub fn material(mut self, material: Material) -> Self {
         self.shape.material = material;
         self
     }
 
+    /// Returns the configured shape.
     pub fn build(self) -> Cylinder {
         self.shape
     }

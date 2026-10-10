@@ -1,3 +1,5 @@
+//! Scene ownership, ray tracing, and precomputed surface-shading data.
+
 use crate::{
     EPSILON,
     geometry::{
@@ -12,8 +14,14 @@ use crate::{
 use nalgebra::{Matrix4, Point3, Scale3, Translation3, Vector3};
 use std::rc::Rc;
 
+/// Default reflection/refraction recursion budget used by the camera.
 pub const MAX_RECURSION_DEPTH: usize = 5;
 
+/// A single-threaded scene with one point light and shared root shapes.
+///
+/// The default world contains two concentric spheres, a reflective plane at
+/// `y = -1`, and a white light at `(-10, 10, -10)`. Rays that miss all shapes
+/// return black. Shadows are hard, and even transparent objects occlude light.
 #[derive(Debug)]
 pub struct World {
     light: PointLight,
@@ -21,6 +29,11 @@ pub struct World {
 }
 
 impl World {
+    /// Builds a world-to-camera transform looking from `from` toward `to`.
+    ///
+    /// `up` indicates the desired upward direction. Use distinct points and a
+    /// nonzero up vector that is not parallel to the viewing direction; inputs
+    /// are not validated.
     pub fn view_transform(from: Point3<f64>, to: Point3<f64>, up: Vector3<f64>) -> Transform {
         let forward = (to - from).normalize();
         let upn = up.normalize();
@@ -38,6 +51,9 @@ impl World {
         ])
     }
 
+    /// Creates a world from boxed root shapes, converting them to shared ownership.
+    ///
+    /// Use [`Self::from_shared`] for groups and other already-shared shapes.
     pub fn new(light: PointLight, objects: Vec<Box<dyn Shape>>) -> Self {
         Self::from_shared(light, objects.into_iter().map(Rc::from).collect())
     }
@@ -48,6 +64,13 @@ impl World {
         World { light, objects }
     }
 
+    /// Intersects a world-space ray with every root and sorts all hits by `t`.
+    ///
+    /// Negative intersections are retained for tracking refractive boundaries.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a shape transform needed for intersection is singular.
     pub fn intersect<'a>(&'a self, ray: &Ray) -> Result<Vec<Intersection<'a>>, TransformError> {
         let mut intersections = Vec::new();
 
@@ -60,6 +83,20 @@ impl World {
         Ok(intersections)
     }
 
+    /// Combines direct lighting, shadows, reflection, and refraction at a hit.
+    ///
+    /// `remaining` limits secondary-ray recursion; zero still computes direct
+    /// lighting. Reflective, transparent surfaces use Schlick reflectance to
+    /// blend the secondary contributions.
+    ///
+    /// # Errors
+    ///
+    /// Returns coordinate-conversion errors from lighting or secondary rays.
+    ///
+    /// # Panics
+    ///
+    /// Panics if shadow testing fails, or if refraction is enabled with a nonzero
+    /// budget but `comps.n1` or `comps.n2` is missing.
     pub fn shade_hit(
         &self,
         comps: &Computations,
@@ -84,6 +121,14 @@ impl World {
         }
     }
 
+    /// Traces a world-space ray and shades its nearest nonnegative hit.
+    ///
+    /// Returns black on a miss. `remaining` limits reflection/refraction depth,
+    /// not direct surface lighting. Use a normalized ray direction for shading.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if intersection or shading requires a singular transform.
     pub fn color_at(&self, ray: &Ray, remaining: usize) -> Result<Color, TransformError> {
         let intersections = self.intersect(ray)?;
 
@@ -102,6 +147,13 @@ impl World {
         }
     }
 
+    /// Reports whether a shape lies between a world-space point and the light.
+    ///
+    /// All surfaces cast opaque shadows, regardless of material transparency.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if an intersected shape requires a singular transform.
     pub fn is_shadowed(&self, point: Point3<f64>) -> Result<bool, TransformError> {
         let v = self.light.position - point;
         let distance = v.magnitude();
@@ -117,6 +169,13 @@ impl World {
         }
     }
 
+    /// Traces a reflected ray and scales its color by the material reflectivity.
+    ///
+    /// Returns black for zero reflectivity or an exhausted recursion budget.
+    ///
+    /// # Errors
+    ///
+    /// Returns coordinate-conversion errors from tracing the reflected ray.
     pub fn reflected_color(
         &self,
         comps: &Computations,
@@ -132,6 +191,19 @@ impl World {
         Ok(color * comps.object.material().reflective)
     }
 
+    /// Traces a refracted ray and scales its color by material transparency.
+    ///
+    /// Returns black for opaque surfaces, total internal reflection, or an
+    /// exhausted recursion budget.
+    ///
+    /// # Errors
+    ///
+    /// Returns coordinate-conversion errors from tracing the refracted ray.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `comps.n1` or `comps.n2` is missing when transparency and
+    /// `remaining` are nonzero. Prepare computations with the full hit list.
     pub fn refracted_color(
         &self,
         comps: &Computations,
@@ -191,22 +263,65 @@ impl Default for World {
     }
 }
 
+/// World-space data prepared for shading a ray/surface intersection.
+///
+/// Use [`Self::prepare_computations`] to compute normals, surface offsets, and
+/// refractive indices consistently.
 #[derive(Debug)]
 pub struct Computations<'a> {
+    /// Ray parameter of the hit.
     pub t: f64,
+    /// Intersected leaf shape.
     pub object: &'a dyn Shape,
+    /// Exact world-space surface point.
     pub point: Point3<f64>,
+    /// Point offset along the oriented normal by `1e-5` to avoid self-shadowing.
     pub over_point: Point3<f64>,
+    /// Point offset opposite the oriented normal by `1e-5` for refracted rays.
     pub under_point: Point3<f64>,
+    /// Negated incoming ray direction, pointing toward the eye.
     pub eyev: Vector3<f64>,
+    /// World-space surface normal, flipped toward the eye for inside hits.
     pub normalv: Vector3<f64>,
+    /// Incoming ray direction reflected about `normalv`.
     pub reflectv: Vector3<f64>,
+    /// Whether the ray hits the surface from inside the object.
     pub inside: bool,
+    /// Refractive index before the hit; `None` without a matching full hit list.
     pub n1: Option<f64>,
+    /// Refractive index after the hit; `None` without a matching full hit list.
     pub n2: Option<f64>,
 }
 
 impl Computations<'_> {
+    /// Prepares shading data for a hit and its world-space ray.
+    ///
+    /// Use a normalized ray direction. For refraction, pass all intersections
+    /// sorted by `t` (including negative hits) in `xs`, and borrow `intersection`
+    /// from that same slice: matching uses pointer identity, not value equality.
+    /// Without a matching entry, `n1` and `n2` remain `None`. Outside any object,
+    /// the refractive index is `1.0`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the shape's normal is undefined or a required
+    /// transform is singular.
+    ///
+    /// ```
+    /// use merlin_rt::{
+    ///     geometry::ray::Ray,
+    ///     scene::world::{Computations, World},
+    /// };
+    /// use nalgebra::{Point3, Vector3};
+    ///
+    /// let world = World::default();
+    /// let ray = Ray::new(Point3::new(0.0, 0.0, -5.0), Vector3::z());
+    /// let hits = world.intersect(&ray)?;
+    /// let hit = hits.iter().find(|hit| hit.t >= 0.0).unwrap();
+    /// let comps = Computations::prepare_computations(hit, &ray, Some(&hits))?;
+    /// assert_eq!(comps.n1, Some(1.0));
+    /// # Ok::<(), merlin_rt::geometry::transforms::TransformError>(())
+    /// ```
     pub fn prepare_computations<'a>(
         intersection: &Intersection<'a>,
         ray: &Ray,
@@ -279,6 +394,10 @@ impl Computations<'_> {
         })
     }
 
+    /// Approximates Fresnel reflectance using Schlick's formula.
+    ///
+    /// Returns `1.0` for total internal reflection and `0.0` when either
+    /// refractive index is unavailable.
     pub fn schlick(&self) -> f64 {
         let mut cos = self.eyev.dot(&self.normalv);
 

@@ -11,19 +11,30 @@ use obj::raw::{object::Polygon, parse_obj};
 use std::{fs::File, io::BufReader, path::Path, rc::Rc};
 use thiserror::Error;
 
+/// Invalid child ownership when constructing a group.
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum GroupError {
+    /// The same shared shape was supplied more than once.
     #[error("Child at index {index} occurs more than once in the group")]
-    DuplicateChild { index: usize },
+    DuplicateChild {
+        /// Zero-based index of the repeated child.
+        index: usize,
+    },
+    /// A child already belongs to a group that is still alive.
     #[error("Child at index {index} already has a live parent")]
-    ChildAlreadyHasParent { index: usize },
+    ChildAlreadyHasParent {
+        /// Zero-based index of the child with a live parent.
+        index: usize,
+    },
 }
 
 /// Errors encountered while loading an OBJ file into a group.
 #[derive(Debug, Error)]
 pub enum ObjImportError {
+    /// The file could not be read or parsed as OBJ.
     #[error(transparent)]
     Obj(#[from] obj::ObjError),
+    /// The imported group violated child ownership requirements.
     #[error(transparent)]
     Group(#[from] GroupError),
 }
@@ -42,6 +53,7 @@ pub struct Group {
 }
 
 impl Group {
+    /// Creates an empty group builder with identity transform and default material.
     pub fn builder() -> GroupBuilder {
         GroupBuilder::default()
     }
@@ -55,7 +67,9 @@ impl Group {
     /// coordinates, materials, points and lines are ignored. All shapes use
     /// identity transforms and default materials.
     ///
-    /// Returns file I/O, OBJ parsing or group construction errors to the caller.
+    /// # Errors
+    ///
+    /// Returns file I/O, OBJ parsing, or group construction errors.
     pub fn from_obj(path: impl AsRef<Path>) -> Result<Rc<Self>, ObjImportError> {
         let file = File::open(path).map_err(obj::ObjError::from)?;
         let raw = parse_obj(BufReader::new(file))?;
@@ -104,6 +118,11 @@ impl Group {
     ///
     /// A fresh group cannot already be among its descendants. Keeping children
     /// immutable and attachment private preserves an acyclic tree.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`GroupError`] for duplicate children or a child with a live parent.
+    /// No parent links are changed on failure.
     pub fn new(
         transform: Transform,
         material: Material,
@@ -134,6 +153,7 @@ impl Group {
         Ok(group)
     }
 
+    /// Borrows the children in insertion order; the list cannot be mutated.
     pub fn children(&self) -> &[ShapeRef] {
         &self.children
     }
@@ -170,6 +190,10 @@ impl Shape for Group {
     }
 }
 
+/// Builds an immutable group with shared children.
+///
+/// Defaults to no children, an identity transform, and a default material.
+/// Keep the resulting group alive while using its descendants.
 #[derive(Debug)]
 #[must_use = "call build() to create the group"]
 pub struct GroupBuilder {
@@ -189,26 +213,36 @@ impl Default for GroupBuilder {
 }
 
 impl GroupBuilder {
+    /// Sets the transform from group space to parent space.
     pub fn transform(mut self, transform: Transform) -> Self {
         self.transform = transform;
         self
     }
 
+    /// Sets the group's own material; it is not inherited by its children.
     pub fn material(mut self, material: Material) -> Self {
         self.material = material;
         self
     }
 
+    /// Appends a child. Ownership is validated by [`Self::build`].
     pub fn child(mut self, child: ShapeRef) -> Self {
         self.children.push(child);
         self
     }
 
+    /// Appends children in iterator order; does not replace existing children.
     pub fn children(mut self, children: impl IntoIterator<Item = ShapeRef>) -> Self {
         self.children.extend(children);
         self
     }
 
+    /// Validates children, attaches weak parent links, and returns a shared group.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`GroupError`] for duplicate children or a child with a live parent.
+    /// No parent links are changed on failure.
     pub fn build(self) -> Result<Rc<Group>, GroupError> {
         Group::new(self.transform, self.material, self.children)
     }
