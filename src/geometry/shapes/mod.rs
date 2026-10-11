@@ -1,13 +1,14 @@
-//! Surface primitives, hierarchical groups, and ray intersections.
+//! Surface primitives, hierarchical groups, constructive solid geometry, and ray intersections.
 //!
 //! Construct shapes with their builders, then place them in a
 //! [`World`](crate::scene::world::World). Builders start with identity transforms
-//! and default materials. Groups own shared children; their transforms compose
-//! through parent links, but their materials are not inherited.
+//! and default materials. Groups and CSG nodes own shared children; their transforms
+//! compose through parent links, but their materials are not inherited.
 //!
 //! [`Shape::intersect`] accepts a ray in parent space, while normals and lighting
 //! use world-space inputs. Singular transforms return [`TransformError`].
 
+mod csg;
 mod cube;
 mod cylinder;
 mod double_napped_cone;
@@ -17,6 +18,7 @@ mod smooth_triangle;
 mod sphere;
 mod triangle;
 
+pub use csg::{Csg, CsgBuilder, CsgError, CsgOperation};
 pub use cube::{Cube, CubeBuilder};
 pub use cylinder::{Cylinder, CylinderBuilder};
 pub use double_napped_cone::{DoubleNappedCone, DoubleNappedConeBuilder};
@@ -44,7 +46,7 @@ use std::{
 /// Shared ownership of a shape in a single-threaded scene graph.
 pub type ShapeRef = Rc<dyn Shape>;
 
-/// A non-owning parent link. Only group construction can attach a parent.
+/// A non-owning parent link. Only group and CSG construction can attach a parent.
 #[derive(Debug, Default)]
 pub struct ParentLink {
     parent: RefCell<Option<Weak<dyn Shape>>>,
@@ -71,7 +73,7 @@ impl PartialEq for ParentLink {
     }
 }
 
-/// A renderable surface or a group of child shapes.
+/// A renderable surface, a group, or a CSG combination of child shapes.
 ///
 /// Implementations expose a stable parent link and convert parent-space rays
 /// to object space. Use [`Self::world_to_object`] and [`Self::normal_to_world`]
@@ -79,7 +81,7 @@ impl PartialEq for ParentLink {
 pub trait Shape: Debug {
     /// Returns the transform from object space to parent space.
     fn transform(&self) -> &Transform;
-    /// Returns this shape's material; group materials do not affect children.
+    /// Returns this shape's material; group and CSG materials do not affect children.
     fn material(&self) -> &Material;
     /// Must return this shape's own, stable parent link.
     fn parent_link(&self) -> &ParentLink;
@@ -87,6 +89,14 @@ pub trait Shape: Debug {
     /// Resolves the parent, or returns `None` for a root or dropped parent.
     fn parent(&self) -> Option<ShapeRef> {
         self.parent_link().resolve()
+    }
+
+    /// Reports whether `other` is this shape or one of its descendants.
+    ///
+    /// Leaves compare allocation identity, not geometry or material equality.
+    /// Composite shapes override this to search their children recursively.
+    fn includes(&self, other: &dyn Shape) -> bool {
+        std::ptr::addr_eq(self, other)
     }
 
     /// Converts a world-space point through the entire ancestor chain.
@@ -132,7 +142,7 @@ pub trait Shape: Debug {
     ///
     /// # Errors
     ///
-    /// Returns an error for a singular transform or a group with no surface.
+    /// Returns an error for a singular transform or a composite shape with no surface.
     fn normal_at(&self, world_point: Point3<f64>) -> Result<Vector3<f64>, TransformError>;
 
     /// Computes a world-space normal using any per-intersection data.
@@ -140,7 +150,7 @@ pub trait Shape: Debug {
     ///
     /// # Errors
     ///
-    /// Returns an error for a singular transform or a group with no surface.
+    /// Returns an error for a singular transform or a composite shape with no surface.
     fn normal_at_hit(
         &self,
         world_point: Point3<f64>,

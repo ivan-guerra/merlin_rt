@@ -9,8 +9,8 @@ pub enum TransformError {
     /// The transform is singular and has no inverse.
     #[error("Failed to invert transformation matrix")]
     MatrixInversionError,
-    /// A normal was requested for a group, which has no surface.
-    #[error("Groups have no surface normal")]
+    /// A normal was requested for a group or CSG node, which has no surface of its own.
+    #[error("Composite shapes have no surface normal of their own")]
     UndefinedNormal,
 }
 

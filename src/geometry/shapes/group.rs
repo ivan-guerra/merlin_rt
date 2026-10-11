@@ -20,7 +20,7 @@ pub enum GroupError {
         /// Zero-based index of the repeated child.
         index: usize,
     },
-    /// A child already belongs to a group that is still alive.
+    /// A child already belongs to a group or CSG node that is still alive.
     #[error("Child at index {index} already has a live parent")]
     ChildAlreadyHasParent {
         /// Zero-based index of the child with a live parent.
@@ -170,6 +170,10 @@ impl Shape for Group {
 
     fn parent_link(&self) -> &ParentLink {
         &self.parent
+    }
+
+    fn includes(&self, other: &dyn Shape) -> bool {
+        std::ptr::addr_eq(self, other) || self.children.iter().any(|child| child.includes(other))
     }
 
     fn intersect(&self, ray: &Ray) -> Result<Vec<Intersection<'_>>, TransformError> {
