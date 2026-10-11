@@ -17,14 +17,14 @@ use std::rc::Rc;
 /// Default reflection/refraction recursion budget used by the camera.
 pub const MAX_RECURSION_DEPTH: usize = 5;
 
-/// A single-threaded scene with one point light and shared root shapes.
+/// A single-threaded scene with point lights and shared root shapes.
 ///
 /// The default world contains two concentric spheres, a reflective plane at
 /// `y = -1`, and a white light at `(-10, 10, -10)`. Rays that miss all shapes
 /// return black. Shadows are hard, and even transparent objects occlude light.
 #[derive(Debug)]
 pub struct World {
-    light: PointLight,
+    lights: Vec<PointLight>,
     objects: Vec<ShapeRef>,
 }
 
@@ -61,7 +61,15 @@ impl World {
     /// Creates a world from shared root shapes, including groups.
     /// Do not also insert a group's descendants as world roots.
     pub fn from_shared(light: PointLight, objects: Vec<ShapeRef>) -> Self {
-        World { light, objects }
+        World {
+            lights: vec![light],
+            objects,
+        }
+    }
+
+    /// Adds a point light without changing the primary light used by [`Self::is_shadowed`].
+    pub fn add_light(&mut self, light: PointLight) {
+        self.lights.push(light);
     }
 
     /// Intersects a world-space ray with every root and sorts all hits by `t`.
@@ -85,31 +93,38 @@ impl World {
 
     /// Combines direct lighting, shadows, reflection, and refraction at a hit.
     ///
+    /// Each light contributes ambient, diffuse, and specular lighting with its
+    /// own shadow test. Reflection and refraction are added once per hit.
+    ///
     /// `remaining` limits secondary-ray recursion; zero still computes direct
     /// lighting. Reflective, transparent surfaces use Schlick reflectance to
     /// blend the secondary contributions.
     ///
     /// # Errors
     ///
-    /// Returns coordinate-conversion errors from lighting or secondary rays.
+    /// Returns coordinate-conversion errors from shadow tests, lighting, or secondary rays.
     ///
     /// # Panics
     ///
-    /// Panics if shadow testing fails, or if refraction is enabled with a nonzero
-    /// budget but `comps.n1` or `comps.n2` is missing.
+    /// Panics if refraction is enabled with a nonzero budget but `comps.n1` or
+    /// `comps.n2` is missing.
     pub fn shade_hit(
         &self,
         comps: &Computations,
         remaining: usize,
     ) -> Result<Color, TransformError> {
-        let shadowed = self.is_shadowed(comps.over_point);
-        let surface = comps.object.lighting(
-            self.light,
-            comps.point,
-            comps.eyev,
-            comps.normalv,
-            shadowed.unwrap(),
-        )?;
+        let mut surface = Color::new(0.0, 0.0, 0.0);
+        for &light in &self.lights {
+            let shadowed = self.is_shadowed_from(comps.over_point, light)?;
+            surface = surface
+                + comps.object.lighting(
+                    light,
+                    comps.point,
+                    comps.eyev,
+                    comps.normalv,
+                    shadowed,
+                )?;
+        }
         let reflected = self.reflected_color(comps, remaining)?;
         let refracted = self.refracted_color(comps, remaining)?;
 
@@ -147,7 +162,7 @@ impl World {
         }
     }
 
-    /// Reports whether a shape lies between a world-space point and the light.
+    /// Reports whether a shape lies between a world-space point and the primary light.
     ///
     /// All surfaces cast opaque shadows, regardless of material transparency.
     ///
@@ -155,7 +170,22 @@ impl World {
     ///
     /// Returns an error if an intersected shape requires a singular transform.
     pub fn is_shadowed(&self, point: Point3<f64>) -> Result<bool, TransformError> {
-        let v = self.light.position - point;
+        self.is_shadowed_from(point, self.lights[0])
+    }
+
+    /// Reports whether a shape lies between a world-space point and a given light.
+    ///
+    /// All surfaces cast opaque shadows, regardless of material transparency.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if an intersected shape requires a singular transform.
+    pub fn is_shadowed_from(
+        &self,
+        point: Point3<f64>,
+        light: PointLight,
+    ) -> Result<bool, TransformError> {
+        let v = light.position - point;
         let distance = v.magnitude();
         let direction = v.normalize();
 
@@ -257,7 +287,7 @@ impl Default for World {
             .build();
 
         World {
-            light,
+            lights: vec![light],
             objects: vec![Rc::new(sphere1), Rc::new(sphere2), Rc::new(plane)],
         }
     }
@@ -456,9 +486,98 @@ mod tests {
     fn test_default_world() {
         let world = World::default();
 
-        assert_eq!(world.light.position, Point3::new(-10.0, 10.0, -10.0));
-        assert_eq!(world.light.intensity, Color::new(1.0, 1.0, 1.0));
+        assert_eq!(world.lights[0].position, Point3::new(-10.0, 10.0, -10.0));
+        assert_eq!(world.lights[0].intensity, Color::new(1.0, 1.0, 1.0));
         assert_eq!(world.objects.len(), 3);
+    }
+
+    #[test]
+    fn test_shading_sums_multiple_lights() {
+        let light = PointLight::new(Point3::new(0.0, 0.0, -10.0), Color::new(1.0, 1.0, 1.0));
+        let mut world = World::new(light, vec![Box::new(Sphere::default())]);
+        world.add_light(PointLight::new(light.position, Color::new(0.2, 0.2, 0.2)));
+        let ray = Ray::new(Point3::new(0.0, 0.0, -5.0), Vector3::z());
+
+        assert_eq!(
+            world.color_at(&ray, MAX_RECURSION_DEPTH).unwrap(),
+            Color::new(2.28, 2.28, 2.28)
+        );
+    }
+
+    #[test]
+    fn test_each_light_has_its_own_shadow_test() {
+        let primary = PointLight::new(Point3::new(-10.0, 10.0, 0.0), Color::new(1.0, 1.0, 1.0));
+        let fill = PointLight::new(Point3::new(10.0, 10.0, 0.0), Color::new(0.2, 0.2, 0.2));
+        let floor = Plane::builder()
+            .material(Material {
+                specular: 0.0,
+                ..Default::default()
+            })
+            .build();
+        let blocker = Sphere::builder()
+            .transform(Transform::translation(Translation3::new(-5.0, 5.0, 0.0)))
+            .build();
+        let mut world = World::new(primary, vec![Box::new(floor), Box::new(blocker)]);
+        world.add_light(fill);
+        let point = Point3::new(0.0, EPSILON, 0.0);
+
+        assert!(world.is_shadowed(point).unwrap());
+        assert!(world.is_shadowed_from(point, primary).unwrap());
+        assert!(!world.is_shadowed_from(point, fill).unwrap());
+        let ray = Ray::new(Point3::new(0.0, 1.0, 0.0), -Vector3::y());
+        let intensity = 0.1 + 0.02 + 0.18 / std::f64::consts::SQRT_2;
+        assert_eq!(
+            world.color_at(&ray, MAX_RECURSION_DEPTH).unwrap(),
+            Color::new(intensity, intensity, intensity)
+        );
+    }
+
+    #[test]
+    fn test_additional_light_does_not_duplicate_reflection_or_refraction() {
+        let mut world = World::default();
+        world.objects[2] = Rc::new(
+            Plane::builder()
+                .material(Material {
+                    reflective: 0.5,
+                    transparency: 0.5,
+                    refractive_index: 1.5,
+                    ..Default::default()
+                })
+                .transform(Transform::translation(Translation3::new(0.0, -1.0, 0.0)))
+                .build(),
+        );
+        world.objects.push(Rc::new(
+            Sphere::builder()
+                .material(Material {
+                    color: Color::new(1.0, 0.0, 0.0),
+                    ambient: 0.5,
+                    ..Default::default()
+                })
+                .transform(Transform::translation(Translation3::new(0.0, -3.5, -0.5)))
+                .build(),
+        ));
+        let ray = Ray::new(
+            Point3::new(0.0, 0.0, -3.0),
+            Vector3::new(0.0, -1.0, 1.0).normalize(),
+        );
+        let hits = world.intersect(&ray).unwrap();
+        let hit = hits.iter().find(|hit| hit.t >= 0.0).unwrap();
+        let comps = Computations::prepare_computations(hit, &ray, Some(&hits)).unwrap();
+        assert_ne!(
+            world.reflected_color(&comps, MAX_RECURSION_DEPTH).unwrap(),
+            Color::new(0.0, 0.0, 0.0)
+        );
+        assert_ne!(
+            world.refracted_color(&comps, MAX_RECURSION_DEPTH).unwrap(),
+            Color::new(0.0, 0.0, 0.0)
+        );
+        let expected = world.color_at(&ray, MAX_RECURSION_DEPTH).unwrap();
+        // A zero-intensity light must not change direct or secondary lighting.
+        world.add_light(PointLight::new(
+            Point3::new(10.0, 10.0, -10.0),
+            Color::new(0.0, 0.0, 0.0),
+        ));
+        assert_eq!(world.color_at(&ray, MAX_RECURSION_DEPTH).unwrap(), expected);
     }
 
     #[test]
@@ -527,7 +646,10 @@ mod tests {
     #[test]
     fn test_shading_an_intersection_from_the_inside() {
         let world = World {
-            light: PointLight::new(Point3::new(0.0, 0.25, 0.0), Color::new(1.0, 1.0, 1.0)),
+            lights: vec![PointLight::new(
+                Point3::new(0.0, 0.25, 0.0),
+                Color::new(1.0, 1.0, 1.0),
+            )],
             ..Default::default()
         };
         let ray = Ray::new(Point3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 1.0));
@@ -669,7 +791,7 @@ mod tests {
     fn test_shade_hit_is_given_an_intersection_in_shadow() {
         let mut world = World::default();
         let light = PointLight::new(Point3::new(0.0, 0.0, -10.0), Color::new(1.0, 1.0, 1.0));
-        world.light = light;
+        world.lights[0] = light;
         let sphere2 = world.objects[1].as_ref();
         let ray = Ray::new(Point3::new(0.0, 0.0, 5.0), Vector3::new(0.0, 0.0, 1.0));
         let intersection = Intersection::new(4.0, sphere2);
